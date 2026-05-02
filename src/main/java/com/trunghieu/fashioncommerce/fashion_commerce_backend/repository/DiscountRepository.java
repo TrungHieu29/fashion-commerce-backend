@@ -1,6 +1,7 @@
 package com.trunghieu.fashioncommerce.fashion_commerce_backend.repository;
 
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.Discount;
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.enums.DiscountStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -12,5 +13,5 @@ import java.util.List;
 @Repository
 public interface DiscountRepository extends JpaRepository<Discount, Long> {
     Page<Discount> findByShopId(Long shopId, Pageable pageable);
-    List<Discount> findByShopIdAndStatusAndStartDateBeforeAndEndDateAfter(Long shopId, Integer status, LocalDateTime now1, LocalDateTime now2);
+    List<Discount> findByShopIdAndStatusAndStartDateBeforeAndEndDateAfter(Long shopId, DiscountStatus status, LocalDateTime now1, LocalDateTime now2);
 }

@@ -1,8 +1,10 @@
 package com.trunghieu.fashioncommerce.fashion_commerce_backend.entity;
 
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.enums.ProductStatus; // Import ProductStatus
 import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
+import java.time.LocalDateTime; // Import LocalDateTime
 import java.util.Set;
 
 @Entity
@@ -24,8 +26,14 @@ public class Product {
     @Column(name = "product_detail", columnDefinition = "TEXT")
     private String productDetail;
 
+    @Column(name = "rating") // Added @Column
     private Double rating;
-    private Integer status;
+
+    @Enumerated(EnumType.STRING) // Add this annotation
+    @Column(name = "status") // Added @Column
+    private ProductStatus status; // Change type to ProductStatus
+
+    @Column(name = "price") // Added @Column
     private BigDecimal price;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -56,5 +64,20 @@ public class Product {
     @ToString.Exclude
     private Set<Discount> discounts;
 
-    // Xóa Set<Review> reviews; -> Truy vấn qua ReviewRepository
+    @Column(name = "created_at") // Added createdAt
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at") // Added updatedAt
+    private LocalDateTime updatedAt;
+
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 }

@@ -30,9 +30,23 @@ public class Message {
     @Column(columnDefinition = "TEXT")
     private String content;
 
+    @Column(name = "is_read") // Added @Column
     private Boolean isRead;
+
+    @Column(name = "created_at") // Added @Column
     private LocalDateTime createdAt;
 
+    @Column(name = "updated_at") // Added updatedAt field
+    private LocalDateTime updatedAt;
+
     @PrePersist
-    protected void onCreate() { createdAt = LocalDateTime.now(); }
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now(); // Initialize updatedAt on creation
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now(); // Update updatedAt on update
+    }
 }

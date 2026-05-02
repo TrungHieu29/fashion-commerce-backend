@@ -1,5 +1,6 @@
 package com.trunghieu.fashioncommerce.fashion_commerce_backend.entity;
 
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.enums.OrderStatus; // Import OrderStatus
 import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
@@ -16,18 +17,25 @@ import java.util.Set;
 public class Order {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long orderId;
+    @Column(name = "order_id")
+    private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     @ToString.Exclude
     private User user;
 
+    @Column(name = "total_price")
     private BigDecimal totalPrice;
+    @Column(name = "final_price")
     private BigDecimal finalPrice;
-    private String status;
+    @Enumerated(EnumType.STRING) // Add this annotation
+    @Column(name = "status")
+    private OrderStatus status; // Change type to OrderStatus
 
+    @Column(name = "created_at")
     private LocalDateTime createdAt;
+    @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)

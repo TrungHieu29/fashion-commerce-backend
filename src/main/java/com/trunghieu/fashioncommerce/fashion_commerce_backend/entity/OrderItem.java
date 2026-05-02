@@ -3,6 +3,7 @@ package com.trunghieu.fashioncommerce.fashion_commerce_backend.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
+import java.time.LocalDateTime; // Import LocalDateTime
 
 @Entity
 @Table(name = "order_items")
@@ -27,10 +28,29 @@ public class OrderItem {
     @ToString.Exclude
     private ProductVariant productVariant;
 
+    @Column(name = "quantity") // Added @Column
     private Integer quantity;
+    @Column(name = "price") // Added @Column
     private BigDecimal price; // Giá tại thời điểm mua
 
     @OneToOne(mappedBy = "orderItem", fetch = FetchType.LAZY)
     @ToString.Exclude
     private Review review;
+
+    @Column(name = "created_at") // Added createdAt
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at") // Added updatedAt
+    private LocalDateTime updatedAt;
+
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 }

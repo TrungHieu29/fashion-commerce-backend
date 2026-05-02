@@ -8,6 +8,6 @@ import java.util.Optional;
 
 @Repository
 public interface PaymentRepository extends JpaRepository<Payment, Long> {
-    Optional<Payment> findByOrderId(Long orderId);
+    Optional<Payment> findByOrder_Id(Long id); // Đã sửa từ findByOrderOrderId thành findByOrder_Id
     Optional<Payment> findByTransactionCode(String transactionCode);
 }

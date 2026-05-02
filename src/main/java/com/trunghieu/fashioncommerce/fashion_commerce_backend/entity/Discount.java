@@ -1,5 +1,7 @@
 package com.trunghieu.fashioncommerce.fashion_commerce_backend.entity;
 
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.enums.DiscountStatus; // Import DiscountStatus
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.enums.DiscountType; // Import DiscountType
 import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
@@ -24,8 +26,9 @@ public class Discount {
     @ToString.Exclude
     private Shop shop;
 
+    @Enumerated(EnumType.STRING) // Add this annotation
     @Column(name = "discount_type")
-    private String discountType; // PERCENT or FIXED
+    private DiscountType discountType; // Change type to DiscountType
 
     @Column(name = "discount_value")
     private BigDecimal discountValue;
@@ -36,10 +39,18 @@ public class Discount {
     @Column(name = "end_date")
     private LocalDateTime endDate;
 
-    private Integer status;
+    @Enumerated(EnumType.STRING) // Add this annotation
+    @Column(name = "status") // Add @Column
+    private DiscountStatus status; // Change type to DiscountStatus
 
     @Column(name = "min_order_value")
     private BigDecimal minOrderValue;
+
+    @Column(name = "created_at") // Added createdAt
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at") // Added updatedAt
+    private LocalDateTime updatedAt;
 
     @ManyToMany
     @JoinTable(
@@ -50,5 +61,14 @@ public class Discount {
     @ToString.Exclude
     private Set<Product> products;
 
-    // Xóa Set<OrderShop> orderShops;
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 }

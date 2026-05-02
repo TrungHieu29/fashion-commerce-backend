@@ -2,6 +2,7 @@ package com.trunghieu.fashioncommerce.fashion_commerce_backend.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import java.time.LocalDateTime; // Import LocalDateTime
 
 @Entity
 @Table(name = "product_variants")
@@ -21,9 +22,29 @@ public class ProductVariant {
     @ToString.Exclude
     private Product product;
 
+    @Column(name = "size") // Added @Column
     private String size;
+
+    @Column(name = "color") // Added @Column
     private String color;
+
+    @Column(name = "stock") // Added @Column
     private Integer stock;
 
-    // Xóa Set<OrderItem> orderItems; -> Truy vấn qua OrderItemRepository
+    @Column(name = "created_at") // Added createdAt
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at") // Added updatedAt
+    private LocalDateTime updatedAt;
+
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 }

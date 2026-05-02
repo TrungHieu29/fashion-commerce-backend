@@ -27,13 +27,23 @@ public class CartItem {
     @ToString.Exclude
     private ProductVariant productVariant;
 
+    @Column(name = "quantity") // Added @Column
     private Integer quantity;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
+    @Column(name = "updated_at") // Added @Column
+    private LocalDateTime updatedAt; // Added updatedAt field
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now(); // Initialize updatedAt on creation
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now(); // Update updatedAt on update
     }
 }

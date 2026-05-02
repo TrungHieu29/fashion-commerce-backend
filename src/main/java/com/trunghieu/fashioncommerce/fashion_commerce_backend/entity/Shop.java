@@ -1,5 +1,6 @@
 package com.trunghieu.fashioncommerce.fashion_commerce_backend.entity;
 
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.enums.ShopStatus; // Import ShopStatus
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
@@ -21,14 +22,27 @@ public class Shop {
     @Column(name = "shop_name", nullable = false)
     private String shopName;
 
+    @Column(name = "logo") // Added @Column
     private String logo;
+
+    @Column(name = "phone") // Added @Column
     private String phone;
-    private Integer status;
+
+    @Enumerated(EnumType.STRING) // Add this annotation
+    @Column(name = "status") // Added @Column
+    private ShopStatus status; // Change type to ShopStatus
+
+    @Column(name = "address") // Added @Column
     private String address;
+
+    @Column(name = "email") // Added @Column
     private String email;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
+
+    @Column(name = "updated_at") // Added updatedAt field
+    private LocalDateTime updatedAt;
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "owner_id")
@@ -46,5 +60,11 @@ public class Shop {
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now(); // Initialize updatedAt on creation
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now(); // Update updatedAt on update
     }
 }
