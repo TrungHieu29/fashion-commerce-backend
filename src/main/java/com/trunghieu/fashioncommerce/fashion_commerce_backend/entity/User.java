@@ -56,7 +56,7 @@ public class User {
     @Column(name = "updated_at") // Added updatedAt field
     private LocalDateTime updatedAt;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "role_id")
     private Role role;
 

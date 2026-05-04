@@ -18,11 +18,12 @@ public class UserController {
 
     private final UserService userService;
 
-    @PostMapping("/register") // Endpoint để đăng ký người dùng mới
-    public ResponseEntity<UserResponseDto> registerUser(@Valid @RequestBody UserRequestDto requestDto) {
-        UserResponseDto createdUser = userService.createUser(requestDto);
-        return new ResponseEntity<>(createdUser, HttpStatus.CREATED);
-    }
+    // Đã xóa endpoint /register vì nó đã được chuyển sang AuthController
+    // @PostMapping("/register")
+    // public ResponseEntity<UserResponseDto> registerUser(@Valid @RequestBody UserRequestDto requestDto) {
+    //     UserResponseDto createdUser = userService.createUser(requestDto);
+    //     return new ResponseEntity<>(createdUser, HttpStatus.CREATED);
+    // }
 
     @GetMapping("/{id}")
     public ResponseEntity<UserResponseDto> getUserById(@PathVariable Long id) {
