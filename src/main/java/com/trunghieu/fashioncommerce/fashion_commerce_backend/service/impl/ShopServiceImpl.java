@@ -22,25 +22,28 @@ public class ShopServiceImpl implements ShopService {
 
     private final ShopRepository shopRepository;
     private final ShopMapper shopMapper;
-    private final UserRepository userRepository;
+    private final UserRepository userRepository; // Cần để gán owner
 
     @Override
     @Transactional
     public ShopResponseDto createShop(ShopRequestDto requestDto) {
-        // Check if shop name already exists
+        // Kiểm tra xem shopName đã tồn tại chưa
         if (shopRepository.existsByShopName(requestDto.getShopName())) {
-            throw new IllegalArgumentException("Shop name already exists: " + requestDto.getShopName());
+            throw new IllegalArgumentException("Shop with name '" + requestDto.getShopName() + "' already exists.");
+        }
+        // Kiểm tra xem ownerId có tồn tại không
+        User owner = userRepository.findById(requestDto.getOwnerId())
+                .orElseThrow(() -> new ResourceNotFoundException("User (owner) not found with id: " + requestDto.getOwnerId()));
+
+        // Kiểm tra xem user này đã có shop chưa (mối quan hệ OneToOne)
+        if (shopRepository.findByOwnerId(requestDto.getOwnerId()).isPresent()) {
+            throw new IllegalArgumentException("User with id " + requestDto.getOwnerId() + " already owns a shop.");
         }
 
-        // Check if owner exists
-        User owner = userRepository.findById(requestDto.getOwnerId())
-                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + requestDto.getOwnerId()));
-
         Shop shop = shopMapper.toEntity(requestDto);
-        shop.setOwner(owner);
-
-        Shop savedShop = shopRepository.save(shop);
-        return shopMapper.toDto(savedShop);
+        shop.setOwner(owner); // Gán owner
+        shop = shopRepository.save(shop);
+        return shopMapper.toDto(shop);
     }
 
     @Override
@@ -48,6 +51,14 @@ public class ShopServiceImpl implements ShopService {
     public ShopResponseDto getShopById(Long id) {
         Shop shop = shopRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Shop not found with id: " + id));
+        return shopMapper.toDto(shop);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ShopResponseDto getShopByOwnerId(Long ownerId) {
+        Shop shop = shopRepository.findByOwnerId(ownerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Shop not found for owner with id: " + ownerId));
         return shopMapper.toDto(shop);
     }
 
@@ -65,28 +76,21 @@ public class ShopServiceImpl implements ShopService {
         Shop existingShop = shopRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Shop not found with id: " + id));
 
-        // Check if shop name is being changed and if it already exists
-        if (!existingShop.getShopName().equals(requestDto.getShopName()) &&
-                shopRepository.existsByShopName(requestDto.getShopName())) {
-            throw new IllegalArgumentException("Shop name already exists: " + requestDto.getShopName());
+        // Kiểm tra tên trùng lặp, ngoại trừ chính shop đang cập nhật
+        if (shopRepository.existsByShopName(requestDto.getShopName()) &&
+            !existingShop.getShopName().equals(requestDto.getShopName())) {
+            throw new IllegalArgumentException("Shop with name '" + requestDto.getShopName() + "' already exists.");
         }
 
-        // Update fields
         existingShop.setShopName(requestDto.getShopName());
         existingShop.setLogo(requestDto.getLogo());
         existingShop.setPhone(requestDto.getPhone());
         existingShop.setAddress(requestDto.getAddress());
         existingShop.setEmail(requestDto.getEmail());
+        // Không cho phép cập nhật ownerId qua đây, owner chỉ được set khi tạo shop
 
-        // Update owner if provided
-        if (requestDto.getOwnerId() != null) {
-            User owner = userRepository.findById(requestDto.getOwnerId())
-                    .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + requestDto.getOwnerId()));
-            existingShop.setOwner(owner);
-        }
-
-        Shop updatedShop = shopRepository.save(existingShop);
-        return shopMapper.toDto(updatedShop);
+        existingShop = shopRepository.save(existingShop);
+        return shopMapper.toDto(existingShop);
     }
 
     @Override

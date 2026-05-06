@@ -2,25 +2,22 @@ package com.trunghieu.fashioncommerce.fashion_commerce_backend.service.impl;
 
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.request.ProductRequestDto;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.response.ProductResponseDto;
-import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.Product;
-import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.Shop;
-import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.ProductBrand;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.Category;
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.Product;
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.ProductBrand;
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.Shop;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.exception.ResourceNotFoundException;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.mapper.ProductMapper;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.repository.ProductRepository;
-import com.trunghieu.fashioncommerce.fashion_commerce_backend.repository.CategoryRepository;
-import com.trunghieu.fashioncommerce.fashion_commerce_backend.repository.ShopRepository;
-import com.trunghieu.fashioncommerce.fashion_commerce_backend.repository.ProductBrandRepository;
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.service.CategoryService;
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.service.ProductBrandService;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.service.ProductService;
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.service.ShopService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -28,36 +25,35 @@ public class ProductServiceImpl implements ProductService {
 
     private final ProductRepository productRepository;
     private final ProductMapper productMapper;
-    private final CategoryRepository categoryRepository;
-    private final ShopRepository shopRepository;
-    private final ProductBrandRepository productBrandRepository;
+    private final ShopService shopService; // Để kiểm tra shop tồn tại
+    private final CategoryService categoryService; // Để kiểm tra category tồn tại
+    private final ProductBrandService productBrandService; // Để kiểm tra brand tồn tại
 
     @Override
     @Transactional
     public ProductResponseDto createProduct(ProductRequestDto requestDto) {
+        // Kiểm tra sự tồn tại của Shop, Category, Brand
+        shopService.getShopById(requestDto.getShopId()); // Sẽ ném ResourceNotFoundException nếu không tìm thấy
+        categoryService.getCategoryById(requestDto.getCategoryId()); // Sẽ ném ResourceNotFoundException nếu không tìm thấy
+        productBrandService.getProductBrandById(requestDto.getBrandId()); // Sẽ ném ResourceNotFoundException nếu không tìm thấy
+
         Product product = productMapper.toEntity(requestDto);
 
-        // Set relationships
-        if (requestDto.getCategoryId() != null) {
-            Category category = categoryRepository.findById(requestDto.getCategoryId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + requestDto.getCategoryId()));
-            product.setCategory(category);
-        }
+        // Gán các đối tượng Entity liên quan
+        Shop shop = new Shop(); // Tạo đối tượng Shop tạm thời để set ID
+        shop.setId(requestDto.getShopId());
+        product.setShop(shop);
 
-        if (requestDto.getShopId() != null) {
-            Shop shop = shopRepository.findById(requestDto.getShopId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Shop not found with id: " + requestDto.getShopId()));
-            product.setShop(shop);
-        }
+        Category category = new Category(); // Tạo đối tượng Category tạm thời để set ID
+        category.setId(requestDto.getCategoryId());
+        product.setCategory(category);
 
-        if (requestDto.getBrandId() != null) {
-            ProductBrand brand = productBrandRepository.findById(requestDto.getBrandId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Product brand not found with id: " + requestDto.getBrandId()));
-            product.setBrand(brand);
-        }
+        ProductBrand brand = new ProductBrand(); // Tạo đối tượng ProductBrand tạm thời để set ID
+        brand.setId(requestDto.getBrandId());
+        product.setBrand(brand);
 
-        Product savedProduct = productRepository.save(product);
-        return productMapper.toDto(savedProduct);
+        product = productRepository.save(product);
+        return productMapper.toDto(product);
     }
 
     @Override
@@ -70,40 +66,35 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<ProductResponseDto> getAllProducts() {
-        return productRepository.findAll().stream()
-                .map(productMapper::toDto)
-                .collect(Collectors.toList());
+    public Page<ProductResponseDto> getAllProducts(Pageable pageable) {
+        return productRepository.findAll(pageable).map(productMapper::toDto);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<ProductResponseDto> getProductsByCategory(Long categoryId) {
-        Pageable pageable = Pageable.unpaged(); // Get all for now
-        Page<Product> products = productRepository.findByCategoryId(categoryId, pageable);
-        return products.stream()
-                .map(productMapper::toDto)
-                .collect(Collectors.toList());
+    public Page<ProductResponseDto> getProductsByShopId(Long shopId, Pageable pageable) {
+        shopService.getShopById(shopId); // Kiểm tra shop tồn tại
+        return productRepository.findByShopId(shopId, pageable).map(productMapper::toDto);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<ProductResponseDto> getProductsByShop(Long shopId) {
-        Pageable pageable = Pageable.unpaged(); // Get all for now
-        Page<Product> products = productRepository.findByShopId(shopId, pageable);
-        return products.stream()
-                .map(productMapper::toDto)
-                .collect(Collectors.toList());
+    public Page<ProductResponseDto> getProductsByCategoryId(Long categoryId, Pageable pageable) {
+        categoryService.getCategoryById(categoryId); // Kiểm tra category tồn tại
+        return productRepository.findByCategoryId(categoryId, pageable).map(productMapper::toDto);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<ProductResponseDto> getProductsByBrand(Long brandId) {
-        Pageable pageable = Pageable.unpaged(); // Get all for now
-        Page<Product> products = productRepository.findByBrandId(brandId, pageable);
-        return products.stream()
-                .map(productMapper::toDto)
-                .collect(Collectors.toList());
+    public Page<ProductResponseDto> getProductsByBrandId(Long brandId, Pageable pageable) {
+        productBrandService.getProductBrandById(brandId); // Kiểm tra brand tồn tại
+        return productRepository.findByBrandId(brandId, pageable).map(productMapper::toDto);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ProductResponseDto> searchProducts(String keyword, Pageable pageable) {
+        return productRepository.findByProductNameContainingIgnoreCase(keyword, pageable).map(productMapper::toDto);
     }
 
     @Override
@@ -112,33 +103,38 @@ public class ProductServiceImpl implements ProductService {
         Product existingProduct = productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + id));
 
-        // Update fields from requestDto
+        // Kiểm tra sự tồn tại của Shop, Category, Brand nếu chúng được thay đổi
+        if (!existingProduct.getShop().getId().equals(requestDto.getShopId())) {
+            shopService.getShopById(requestDto.getShopId());
+        }
+        if (!existingProduct.getCategory().getId().equals(requestDto.getCategoryId())) {
+            categoryService.getCategoryById(requestDto.getCategoryId());
+        }
+        if (!existingProduct.getBrand().getId().equals(requestDto.getBrandId())) {
+            productBrandService.getProductBrandById(requestDto.getBrandId());
+        }
+
+        // Cập nhật các trường
         existingProduct.setProductName(requestDto.getProductName());
         existingProduct.setProductDetail(requestDto.getProductDetail());
         existingProduct.setStatus(requestDto.getStatus());
         existingProduct.setPrice(requestDto.getPrice());
 
-        // Update relationships
-        if (requestDto.getCategoryId() != null) {
-            Category category = categoryRepository.findById(requestDto.getCategoryId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + requestDto.getCategoryId()));
-            existingProduct.setCategory(category);
-        }
+        // Cập nhật các mối quan hệ
+        Shop shop = new Shop();
+        shop.setId(requestDto.getShopId());
+        existingProduct.setShop(shop);
 
-        if (requestDto.getShopId() != null) {
-            Shop shop = shopRepository.findById(requestDto.getShopId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Shop not found with id: " + requestDto.getShopId()));
-            existingProduct.setShop(shop);
-        }
+        Category category = new Category();
+        category.setId(requestDto.getCategoryId());
+        existingProduct.setCategory(category);
 
-        if (requestDto.getBrandId() != null) {
-            ProductBrand brand = productBrandRepository.findById(requestDto.getBrandId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Product brand not found with id: " + requestDto.getBrandId()));
-            existingProduct.setBrand(brand);
-        }
+        ProductBrand brand = new ProductBrand();
+        brand.setId(requestDto.getBrandId());
+        existingProduct.setBrand(brand);
 
-        Product updatedProduct = productRepository.save(existingProduct);
-        return productMapper.toDto(updatedProduct);
+        existingProduct = productRepository.save(existingProduct);
+        return productMapper.toDto(existingProduct);
     }
 
     @Override
