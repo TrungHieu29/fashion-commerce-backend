@@ -7,6 +7,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize; // Import PreAuthorize
+import org.springframework.security.core.Authentication; // Import Authentication
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -18,39 +20,38 @@ public class UserController {
 
     private final UserService userService;
 
-    // Đã xóa endpoint /register vì nó đã được chuyển sang AuthController
-    // @PostMapping("/register")
-    // public ResponseEntity<UserResponseDto> registerUser(@Valid @RequestBody UserRequestDto requestDto) {
-    //     UserResponseDto createdUser = userService.createUser(requestDto);
-    //     return new ResponseEntity<>(createdUser, HttpStatus.CREATED);
-    // }
-
     @GetMapping("/{id}")
-    public ResponseEntity<UserResponseDto> getUserById(@PathVariable Long id) {
+    @PreAuthorize("hasRole('ADMIN') or #id == authentication.principal.id") // Chỉ ADMIN hoặc chính người dùng
+    public ResponseEntity<UserResponseDto> getUserById(@PathVariable Long id, Authentication authentication) {
+        // authentication.principal sẽ là CustomUserDetails
         UserResponseDto user = userService.getUserById(id);
         return ResponseEntity.ok(user);
     }
 
     @GetMapping("/username/{username}")
-    public ResponseEntity<UserResponseDto> getUserByUsername(@PathVariable String username) {
+    @PreAuthorize("hasRole('ADMIN') or #username == authentication.principal.username") // Chỉ ADMIN hoặc chính người dùng
+    public ResponseEntity<UserResponseDto> getUserByUsername(@PathVariable String username, Authentication authentication) {
         UserResponseDto user = userService.getUserByUsername(username);
         return ResponseEntity.ok(user);
     }
 
     @GetMapping
+    @PreAuthorize("hasRole('ADMIN')") // Chỉ ADMIN
     public ResponseEntity<List<UserResponseDto>> getAllUsers() {
         List<UserResponseDto> users = userService.getAllUsers();
         return ResponseEntity.ok(users);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<UserResponseDto> updateUser(@PathVariable Long id, @Valid @RequestBody UserRequestDto requestDto) {
+    @PreAuthorize("hasRole('ADMIN') or #id == authentication.principal.id") // Chỉ ADMIN hoặc chính người dùng
+    public ResponseEntity<UserResponseDto> updateUser(@PathVariable Long id, @Valid @RequestBody UserRequestDto requestDto, Authentication authentication) {
         UserResponseDto updatedUser = userService.updateUser(id, requestDto);
         return ResponseEntity.ok(updatedUser);
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
+    @PreAuthorize("hasRole('ADMIN') or #id == authentication.principal.id") // Chỉ ADMIN hoặc chính người dùng
+    public ResponseEntity<Void> deleteUser(@PathVariable Long id, Authentication authentication) {
         userService.deleteUser(id);
         return ResponseEntity.noContent().build();
     }
