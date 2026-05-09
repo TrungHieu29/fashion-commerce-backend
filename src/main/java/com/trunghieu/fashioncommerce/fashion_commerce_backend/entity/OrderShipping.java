@@ -27,9 +27,6 @@ public class OrderShipping {
     @Column(name = "address_snapshot", columnDefinition = "TEXT")
     private String addressSnapshot;
 
-    @Column(name = "shipping_fee")
-    private BigDecimal shippingFee;
-
     @Enumerated(EnumType.STRING) // Add this annotation
     @Column(name = "shipping_status")
     private ShippingStatus shippingStatus; // Change type to ShippingStatus

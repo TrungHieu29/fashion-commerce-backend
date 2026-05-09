@@ -7,6 +7,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,24 +20,28 @@ public class ProductBrandController {
     private final ProductBrandService productBrandService;
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ProductBrandResponseDto> createProductBrand(@Valid @RequestBody ProductBrandRequestDto requestDto) {
         ProductBrandResponseDto createdProductBrand = productBrandService.createProductBrand(requestDto);
         return new ResponseEntity<>(createdProductBrand, HttpStatus.CREATED);
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','CUSTOMER')")
     public ResponseEntity<ProductBrandResponseDto> getProductBrandById(@PathVariable Long id) {
         ProductBrandResponseDto productBrand = productBrandService.getProductBrandById(id);
         return ResponseEntity.ok(productBrand);
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN','CUSTOMER')")
     public ResponseEntity<List<ProductBrandResponseDto>> getAllProductBrands() {
         List<ProductBrandResponseDto> productBrands = productBrandService.getAllProductBrands();
         return ResponseEntity.ok(productBrands);
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ProductBrandResponseDto> updateProductBrand(
             @PathVariable Long id,
             @Valid @RequestBody ProductBrandRequestDto requestDto) {

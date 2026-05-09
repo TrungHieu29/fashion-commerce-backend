@@ -29,6 +29,10 @@ public class Order {
     private BigDecimal totalPrice;
     @Column(name = "final_price")
     private BigDecimal finalPrice;
+
+    @Column(name = "address_snapshot", columnDefinition = "TEXT")
+    private String addressSnapshot;
+
     @Enumerated(EnumType.STRING) // Add this annotation
     @Column(name = "status")
     private OrderStatus status; // Change type to OrderStatus

@@ -17,9 +17,9 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 @Builder
 public class PaymentRequestDto {
-    @NotNull(message = "Amount cannot be null")
-    @DecimalMin(value = "0.0", message = "Amount cannot be negative")
-    private BigDecimal amount;
+    //@NotNull(message = "Amount cannot be null")
+    //@DecimalMin(value = "0.0", message = "Amount cannot be negative")
+    //private BigDecimal amount;
 
     @NotNull(message = "Payment method cannot be blank") // Đã thay đổi từ NotBlank sang NotNull vì là enum
     private PaymentMethod method; // Đã thay đổi từ String sang PaymentMethod enum

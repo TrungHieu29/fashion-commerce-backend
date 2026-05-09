@@ -1,5 +1,6 @@
 package com.trunghieu.fashioncommerce.fashion_commerce_backend.entity;
 
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.enums.OrderStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
@@ -33,6 +34,13 @@ public class OrderShop {
 
     @Column(name = "final_price")
     private BigDecimal finalPrice;
+
+    @Column(name = "address_snapshot", columnDefinition = "TEXT")
+    private String addressSnapshot;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status")
+    private OrderStatus status;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "discount_id")

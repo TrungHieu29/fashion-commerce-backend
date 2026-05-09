@@ -20,5 +20,6 @@ public interface OrderItemMapper {
     @Mapping(source = "productVariant.product.productName", target = "productName")
     @Mapping(source = "productVariant.size", target = "size")
     @Mapping(source = "productVariant.color", target = "color")
+    @Mapping(source = "productImage", target = "productImage")
     OrderItemResponseDto toDto(OrderItem orderItem);
 }

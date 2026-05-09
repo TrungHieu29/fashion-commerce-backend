@@ -33,6 +33,12 @@ public class OrderItem {
     @Column(name = "price") // Added @Column
     private BigDecimal price; // Giá tại thời điểm mua
 
+    @Column(name = "product_name") // Tên sản phẩm tại thời điểm mua
+    private String productName;
+
+    @Column(name = "product_image") // Hình ảnh sản phẩm tại thời điểm mua
+    private String productImage;
+
     @OneToOne(mappedBy = "orderItem", fetch = FetchType.LAZY)
     @ToString.Exclude
     private Review review;

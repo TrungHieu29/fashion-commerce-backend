@@ -8,6 +8,8 @@ import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 import java.util.Set;
 
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.enums.OrderStatus;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -20,6 +22,8 @@ public class OrderShopResponseDto {
     private BigDecimal totalPrice;
     private BigDecimal finalPrice;
     private Long discountId;
+    private String addressSnapshot;
+    private OrderStatus status;
     private Set<OrderItemResponseDto> orderItems;
     private OrderShippingResponseDto shipping;
 }

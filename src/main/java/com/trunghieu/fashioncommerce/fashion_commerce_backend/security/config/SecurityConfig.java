@@ -35,6 +35,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(authorize -> authorize
                 .requestMatchers("/api/auth/**").permitAll() // Cho phép các endpoint xác thực không cần bảo mật
                 .requestMatchers("/api/roles/**").permitAll() // Tạm thời cho phép Role API để test
+                .requestMatchers("/ws/**").permitAll() // Cho phép handshake WebSocket
                 .anyRequest().authenticated() // Các request khác yêu cầu xác thực
             )
             .sessionManagement(session -> session

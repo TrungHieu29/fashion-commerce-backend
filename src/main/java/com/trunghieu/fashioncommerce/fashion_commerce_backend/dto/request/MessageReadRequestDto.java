@@ -6,13 +6,12 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.math.BigDecimal;
-
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class OrderShippingRequestDto {
-    private String shippingStatus; // Có thể có giá trị mặc định hoặc được set trong service
-    private String trackingCode; // Có thể được sinh ra trong service
+public class MessageReadRequestDto {
+    @NotNull(message = "Conversation ID is required")
+    private Long conversationId;
+    private Long readerId;
 }

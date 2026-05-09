@@ -15,7 +15,6 @@ import java.math.BigDecimal;
 public class OrderShippingResponseDto {
     private Long id;
     private String addressSnapshot;
-    private BigDecimal shippingFee;
     private ShippingStatus shippingStatus; // Đã thay đổi từ String sang ShippingStatus
     private String trackingCode;
 }

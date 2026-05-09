@@ -15,6 +15,7 @@ public class OrderItemResponseDto {
     private Long id;
     private Long productVariantId;
     private String productName;
+    private String productImage;
     private String size;
     private String color;
     private Integer quantity;

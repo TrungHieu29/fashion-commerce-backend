@@ -18,14 +18,12 @@ public class OrderRequestDto {
     @NotNull(message = "User ID cannot be null")
     private Long userId;
 
-    @NotNull(message = "Total price cannot be null")
-    @DecimalMin(value = "0.0", inclusive = false, message = "Total price must be greater than 0")
-    private BigDecimal totalPrice;
+    // Loại bỏ totalPrice và finalPrice vì sẽ tính tự động từ cart
 
-    @NotNull(message = "Final price cannot be null")
-    @DecimalMin(value = "0.0", inclusive = false, message = "Final price must be greater than 0")
-    private BigDecimal finalPrice;
-
-    // Có thể thêm List<OrderItemRequestDto> nếu muốn tạo order và order items cùng lúc
-    // private List<OrderItemRequestDto> items;
+    private Long addressId; // ID địa chỉ có sẵn
+    private String receiverName; // Tên người nhận (nếu nhập mới)
+    private String phone; // SĐT người nhận (nếu nhập mới)
+    private String addressLine; // Địa chỉ chi tiết (nếu nhập mới)
+    private String city; // Tỉnh/Thành phố (nếu nhập mới)
+    private String district; // Quận/Huyện (nếu nhập mới)
 }

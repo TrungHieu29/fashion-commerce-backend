@@ -20,6 +20,7 @@ public interface OrderShopMapper {
     @Mapping(target = "discount", ignore = true) // Discount sẽ được set trong service
     @Mapping(target = "orderItems", ignore = true) // OrderItems sẽ được xử lý riêng
     @Mapping(target = "shipping", ignore = true) // Shipping sẽ được xử lý riêng
+    @Mapping(target = "status", ignore = true)
     OrderShop toEntity(OrderShopRequestDto orderShopRequestDto);
 
     @Mapping(source = "order.id", target = "orderId") // Corrected from order.orderId to order.id

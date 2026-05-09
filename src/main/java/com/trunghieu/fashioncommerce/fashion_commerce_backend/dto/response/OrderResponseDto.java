@@ -20,6 +20,7 @@ public class OrderResponseDto {
     private BigDecimal totalPrice;
     private BigDecimal finalPrice;
     private OrderStatus status; // Đã thay đổi từ String sang OrderStatus
+    private String addressSnapshot;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }
