@@ -4,6 +4,7 @@ import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.request.Review
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.response.ReviewResponseDto;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.OrderItem;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.Product;
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.enums.OrderStatus;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.Review;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.User;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.exception.ResourceNotFoundException;
@@ -35,9 +36,29 @@ public class ReviewServiceImpl implements ReviewService {
         User user = userRepository.findById(requestDto.getUserId())
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + requestDto.getUserId()));
         Product product = productRepository.findById(requestDto.getProductId())
-                .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + requestDto.getProductId()));
+                .orElseThrow(
+                        () -> new ResourceNotFoundException("Product not found with id: " + requestDto.getProductId()));
         OrderItem orderItem = orderItemRepository.findById(requestDto.getOrderItemId())
-                .orElseThrow(() -> new ResourceNotFoundException("Order item not found with id: " + requestDto.getOrderItemId()));
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Order item not found with id: " + requestDto.getOrderItemId()));
+
+        // Kiểm tra bảo mật: OrderItem phải thuộc về User đang đánh giá
+        if (!orderItem.getOrderShop().getOrder().getUser().getId().equals(user.getId())) {
+            throw new IllegalArgumentException("Bạn không thể đánh giá sản phẩm từ đơn hàng của người khác.");
+        }
+
+        // Kiểm tra tính nhất quán: ProductId trong request phải khớp với sản phẩm trong
+        // OrderItem
+        if (!orderItem.getProductVariant().getProduct().getId().equals(product.getId())) {
+            throw new IllegalArgumentException("Sản phẩm đánh giá không khớp với sản phẩm trong đơn hàng.");
+        }
+
+        // Kiểm tra điều kiện: Chỉ cho phép đánh giá khi đơn hàng đã được giao thành
+        // công
+        if (orderItem.getOrderShop().getStatus() != OrderStatus.DELIVERED) {
+            throw new IllegalArgumentException(
+                    "Bạn chỉ có thể đánh giá sản phẩm sau khi đơn hàng đã được giao thành công.");
+        }
 
         Review review = reviewMapper.toEntity(requestDto);
         review.setUser(user);

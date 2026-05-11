@@ -38,7 +38,8 @@ public class SecurityUtils {
 
     public boolean isShopOwner(Long shopId) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated() || !(authentication.getPrincipal() instanceof CustomUserDetails)) {
+        if (authentication == null || !authentication.isAuthenticated()
+                || !(authentication.getPrincipal() instanceof CustomUserDetails)) {
             return false;
         }
         CustomUserDetails currentUser = (CustomUserDetails) authentication.getPrincipal();
@@ -51,20 +52,23 @@ public class SecurityUtils {
 
     public boolean isProductOwner(Long productId) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated() || !(authentication.getPrincipal() instanceof CustomUserDetails)) {
+        if (authentication == null || !authentication.isAuthenticated()
+                || !(authentication.getPrincipal() instanceof CustomUserDetails)) {
             return false;
         }
         CustomUserDetails currentUser = (CustomUserDetails) authentication.getPrincipal();
         Long currentUserId = currentUser.getId();
 
         return productRepository.findById(productId)
-                .map(product -> product.getShop() != null && product.getShop().getOwner() != null && product.getShop().getOwner().getId().equals(currentUserId))
+                .map(product -> product.getShop() != null && product.getShop().getOwner() != null
+                        && product.getShop().getOwner().getId().equals(currentUserId))
                 .orElse(false);
     }
 
     public boolean isShippingAddressOwner(Long addressId) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated() || !(authentication.getPrincipal() instanceof CustomUserDetails)) {
+        if (authentication == null || !authentication.isAuthenticated()
+                || !(authentication.getPrincipal() instanceof CustomUserDetails)) {
             return false;
         }
         CustomUserDetails currentUser = (CustomUserDetails) authentication.getPrincipal();
@@ -77,7 +81,8 @@ public class SecurityUtils {
 
     public boolean isCartOwner(Long cartId) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated() || !(authentication.getPrincipal() instanceof CustomUserDetails)) {
+        if (authentication == null || !authentication.isAuthenticated()
+                || !(authentication.getPrincipal() instanceof CustomUserDetails)) {
             return false;
         }
         CustomUserDetails currentUser = (CustomUserDetails) authentication.getPrincipal();
@@ -90,7 +95,8 @@ public class SecurityUtils {
 
     public boolean isOrderOwner(Long orderId) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated() || !(authentication.getPrincipal() instanceof CustomUserDetails)) {
+        if (authentication == null || !authentication.isAuthenticated()
+                || !(authentication.getPrincipal() instanceof CustomUserDetails)) {
             return false;
         }
         CustomUserDetails currentUser = (CustomUserDetails) authentication.getPrincipal();
@@ -103,58 +109,82 @@ public class SecurityUtils {
 
     public boolean isOrderShopOwner(Long orderShopId) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated() || !(authentication.getPrincipal() instanceof CustomUserDetails)) {
+        if (authentication == null || !authentication.isAuthenticated()
+                || !(authentication.getPrincipal() instanceof CustomUserDetails)) {
             return false;
         }
         CustomUserDetails currentUser = (CustomUserDetails) authentication.getPrincipal();
         Long currentUserId = currentUser.getId();
 
         return orderShopRepository.findById(orderShopId)
-                .map(orderShop -> orderShop.getShop() != null && orderShop.getShop().getOwner() != null && orderShop.getShop().getOwner().getId().equals(currentUserId))
+                .map(orderShop -> {
+                    boolean isSeller = orderShop.getShop() != null && orderShop.getShop().getOwner() != null
+                            && orderShop.getShop().getOwner().getId().equals(currentUserId);
+                    boolean isBuyer = orderShop.getOrder() != null && orderShop.getOrder().getUser() != null
+                            && orderShop.getOrder().getUser().getId().equals(currentUserId);
+                    return isSeller || isBuyer;
+                })
                 .orElse(false);
     }
 
     public boolean isOrderShippingOwner(Long orderShippingId) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated() || !(authentication.getPrincipal() instanceof CustomUserDetails)) {
+        if (authentication == null || !authentication.isAuthenticated()
+                || !(authentication.getPrincipal() instanceof CustomUserDetails)) {
             return false;
         }
         CustomUserDetails currentUser = (CustomUserDetails) authentication.getPrincipal();
         Long currentUserId = currentUser.getId();
 
         return orderShippingRepository.findById(orderShippingId)
-                .map(orderShipping -> orderShipping.getOrderShop() != null &&
-                        orderShipping.getOrderShop().getShop() != null &&
-                        orderShipping.getOrderShop().getShop().getOwner() != null &&
-                        orderShipping.getOrderShop().getShop().getOwner().getId().equals(currentUserId))
+                .map(shipping -> {
+                    boolean isSeller = shipping.getOrderShop() != null && shipping.getOrderShop().getShop() != null &&
+                            shipping.getOrderShop().getShop().getOwner() != null
+                            && shipping.getOrderShop().getShop().getOwner().getId().equals(currentUserId);
+                    boolean isBuyer = shipping.getOrderShop() != null && shipping.getOrderShop().getOrder() != null &&
+                            shipping.getOrderShop().getOrder().getUser() != null
+                            && shipping.getOrderShop().getOrder().getUser().getId().equals(currentUserId);
+                    return isSeller || isBuyer;
+                })
                 .orElse(false);
     }
 
     public boolean isOrderItemOwner(Long orderItemId) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated() || !(authentication.getPrincipal() instanceof CustomUserDetails)) {
+        if (authentication == null || !authentication.isAuthenticated()
+                || !(authentication.getPrincipal() instanceof CustomUserDetails)) {
             return false;
         }
         CustomUserDetails currentUser = (CustomUserDetails) authentication.getPrincipal();
         Long currentUserId = currentUser.getId();
 
         return orderItemRepository.findById(orderItemId)
-                .map(orderItem -> orderItem.getOrderShop() != null &&
-                        orderItem.getOrderShop().getShop() != null &&
-                        orderItem.getOrderShop().getShop().getOwner() != null &&
-                        orderItem.getOrderShop().getShop().getOwner().getId().equals(currentUserId))
+                .map(item -> {
+                    boolean isSeller = item.getOrderShop() != null && item.getOrderShop().getShop() != null &&
+                            item.getOrderShop().getShop().getOwner() != null
+                            && item.getOrderShop().getShop().getOwner().getId().equals(currentUserId);
+                    boolean isBuyer = item.getOrderShop() != null && item.getOrderShop().getOrder() != null &&
+                            item.getOrderShop().getOrder().getUser() != null
+                            && item.getOrderShop().getOrder().getUser().getId().equals(currentUserId);
+                    return isSeller || isBuyer;
+                })
                 .orElse(false);
     }
 
     /**
-     * Kiểm tra xem người dùng hiện tại có phải là chủ sở hữu của biến thể sản phẩm có ID đã cho hay không.
-     * Quyền sở hữu biến thể được xác định bởi quyền sở hữu sản phẩm, và từ đó là quyền sở hữu shop.
+     * Kiểm tra xem người dùng hiện tại có phải là chủ sở hữu của biến thể sản phẩm
+     * có ID đã cho hay không.
+     * Quyền sở hữu biến thể được xác định bởi quyền sở hữu sản phẩm, và từ đó là
+     * quyền sở hữu shop.
+     * 
      * @param productVariantId ID của biến thể sản phẩm cần kiểm tra.
-     * @return true nếu người dùng hiện tại là chủ sở hữu của shop chứa sản phẩm đó, ngược lại là false.
+     * @return true nếu người dùng hiện tại là chủ sở hữu của shop chứa sản phẩm đó,
+     *         ngược lại là false.
      */
     public boolean isProductVariantOwner(Long productVariantId) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated() || !(authentication.getPrincipal() instanceof CustomUserDetails)) {
+        if (authentication == null || !authentication.isAuthenticated()
+                || !(authentication.getPrincipal() instanceof CustomUserDetails)) {
             return false;
         }
         CustomUserDetails currentUser = (CustomUserDetails) authentication.getPrincipal();
@@ -170,7 +200,8 @@ public class SecurityUtils {
 
     public boolean isConversationParticipant(Long conversationId) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated() || !(authentication.getPrincipal() instanceof CustomUserDetails)) {
+        if (authentication == null || !authentication.isAuthenticated()
+                || !(authentication.getPrincipal() instanceof CustomUserDetails)) {
             return false;
         }
         CustomUserDetails currentUser = (CustomUserDetails) authentication.getPrincipal();
@@ -178,8 +209,10 @@ public class SecurityUtils {
 
         return conversationRepository.findById(conversationId)
                 .map(conversation -> {
-                    boolean isUser = conversation.getUser() != null && conversation.getUser().getId().equals(currentUserId);
-                    boolean isShopOwner = conversation.getShop() != null && conversation.getShop().getOwner() != null && conversation.getShop().getOwner().getId().equals(currentUserId);
+                    boolean isUser = conversation.getUser() != null
+                            && conversation.getUser().getId().equals(currentUserId);
+                    boolean isShopOwner = conversation.getShop() != null && conversation.getShop().getOwner() != null
+                            && conversation.getShop().getOwner().getId().equals(currentUserId);
                     return isUser || isShopOwner;
                 })
                 .orElse(false);
@@ -187,7 +220,8 @@ public class SecurityUtils {
 
     public boolean isReviewOwner(Long reviewId) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated() || !(authentication.getPrincipal() instanceof CustomUserDetails)) {
+        if (authentication == null || !authentication.isAuthenticated()
+                || !(authentication.getPrincipal() instanceof CustomUserDetails)) {
             return false;
         }
         CustomUserDetails currentUser = (CustomUserDetails) authentication.getPrincipal();
@@ -200,27 +234,31 @@ public class SecurityUtils {
 
     public boolean isDiscountShopOwner(Long discountId) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated() || !(authentication.getPrincipal() instanceof CustomUserDetails)) {
+        if (authentication == null || !authentication.isAuthenticated()
+                || !(authentication.getPrincipal() instanceof CustomUserDetails)) {
             return false;
         }
         CustomUserDetails currentUser = (CustomUserDetails) authentication.getPrincipal();
         Long currentUserId = currentUser.getId();
 
         return discountRepository.findById(discountId)
-                .map(discount -> discount.getShop() != null && discount.getShop().getOwner() != null && discount.getShop().getOwner().getId().equals(currentUserId))
+                .map(discount -> discount.getShop() != null && discount.getShop().getOwner() != null
+                        && discount.getShop().getOwner().getId().equals(currentUserId))
                 .orElse(false);
     }
 
     public boolean isPaymentOwner(Long paymentId) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated() || !(authentication.getPrincipal() instanceof CustomUserDetails)) {
+        if (authentication == null || !authentication.isAuthenticated()
+                || !(authentication.getPrincipal() instanceof CustomUserDetails)) {
             return false;
         }
         CustomUserDetails currentUser = (CustomUserDetails) authentication.getPrincipal();
         Long currentUserId = currentUser.getId();
 
         return paymentRepository.findById(paymentId)
-                .map(payment -> payment.getOrder() != null && payment.getOrder().getUser() != null && payment.getOrder().getUser().getId().equals(currentUserId))
+                .map(payment -> payment.getOrder() != null && payment.getOrder().getUser() != null
+                        && payment.getOrder().getUser().getId().equals(currentUserId))
                 .orElse(false);
     }
 }

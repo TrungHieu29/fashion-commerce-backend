@@ -6,8 +6,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 public interface OrderShopService {
-    OrderShopResponseDto createOrderShop(Long orderId, OrderShopRequestDto requestDto);
     OrderShopResponseDto getOrderShopById(Long id);
+
     Page<OrderShopResponseDto> getOrderShopsByOrderId(Long orderId, Pageable pageable);
+
     Page<OrderShopResponseDto> getOrderShopsByShopId(Long shopId, Pageable pageable);
 }

@@ -19,14 +19,6 @@ public class OrderItemController {
 
     private final OrderItemService orderItemService;
 
-    @PostMapping("/order-shop/{orderShopId}")
-    @PreAuthorize("hasRole('ADMIN') or @securityUtils.isOrderShopOwner(#orderShopId)")
-    public ResponseEntity<OrderItemResponseDto> createOrderItem(
-            @PathVariable Long orderShopId,
-            @Valid @RequestBody OrderItemRequestDto requestDto) {
-        return new ResponseEntity<>(orderItemService.createOrderItem(orderShopId, requestDto), HttpStatus.CREATED);
-    }
-
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or @securityUtils.isOrderItemOwner(#id)")
     public ResponseEntity<OrderItemResponseDto> getOrderItemById(@PathVariable Long id) {

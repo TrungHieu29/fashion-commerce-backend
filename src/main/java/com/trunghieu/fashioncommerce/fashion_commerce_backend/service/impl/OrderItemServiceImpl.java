@@ -27,28 +27,6 @@ public class OrderItemServiceImpl implements OrderItemService {
     private final OrderItemMapper orderItemMapper;
 
     @Override
-    @Transactional
-    public OrderItemResponseDto createOrderItem(Long orderShopId, OrderItemRequestDto requestDto) {
-        OrderShop orderShop = orderShopRepository.findById(orderShopId)
-                .orElseThrow(() -> new ResourceNotFoundException("OrderShop not found with id: " + orderShopId));
-
-        ProductVariant productVariant = productVariantRepository.findById(requestDto.getProductVariantId())
-                .orElseThrow(() -> new ResourceNotFoundException("Product variant not found with id: " + requestDto.getProductVariantId()));
-
-        if (productVariant.getProduct() == null) {
-            throw new ResourceNotFoundException("Product not found for variant id: " + requestDto.getProductVariantId());
-        }
-
-        OrderItem orderItem = orderItemMapper.toEntity(requestDto);
-        orderItem.setOrderShop(orderShop);
-        orderItem.setProductVariant(productVariant);
-        orderItem.setPrice(productVariant.getProduct().getPrice());
-
-        OrderItem savedItem = orderItemRepository.save(orderItem);
-        return orderItemMapper.toDto(savedItem);
-    }
-
-    @Override
     @Transactional(readOnly = true)
     public OrderItemResponseDto getOrderItemById(Long id) {
         OrderItem orderItem = orderItemRepository.findById(id)
