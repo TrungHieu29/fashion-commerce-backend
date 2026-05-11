@@ -31,18 +31,25 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            .csrf(AbstractHttpConfigurer::disable) // Vô hiệu hóa CSRF
-            .authorizeHttpRequests(authorize -> authorize
-                .requestMatchers("/api/auth/**").permitAll() // Cho phép các endpoint xác thực không cần bảo mật
-                .requestMatchers("/api/roles/**").permitAll() // Tạm thời cho phép Role API để test
-                .requestMatchers("/ws/**").permitAll() // Cho phép handshake WebSocket
-                .anyRequest().authenticated() // Các request khác yêu cầu xác thực
-            )
-            .sessionManagement(session -> session
-                .sessionCreationPolicy(SessionCreationPolicy.STATELESS) // Không sử dụng session
-            )
-            .authenticationProvider(authenticationProvider())
-            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class); // Thêm JWT filter trước UsernamePasswordAuthenticationFilter
+                .csrf(AbstractHttpConfigurer::disable) // Vô hiệu hóa CSRF
+                .authorizeHttpRequests(authorize -> authorize
+                        .requestMatchers("/api/auth/**").permitAll() // Cho phép các endpoint xác thực không cần bảo mật
+                        // Cho phép truy cập Swagger UI và OpenAPI Docs
+                        .requestMatchers(
+                                "/v3/api-docs/**",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html")
+                        .permitAll()
+                        .requestMatchers("/api/roles/**").permitAll() // Tạm thời cho phép Role API để test
+                        .requestMatchers("/ws/**").permitAll() // Cho phép handshake WebSocket
+                        .anyRequest().authenticated() // Các request khác yêu cầu xác thực
+                )
+                .sessionManagement(session -> session
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS) // Không sử dụng session
+                )
+                .authenticationProvider(authenticationProvider())
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class); // Thêm JWT filter trước
+                                                                                             // UsernamePasswordAuthenticationFilter
         return http.build();
     }
 
