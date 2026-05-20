@@ -8,5 +8,16 @@ import org.mapstruct.Mapping;
 @Mapper(componentModel = "spring", uses = {CartItemMapper.class})
 public interface CartMapper {
     @Mapping(source = "user.id", target = "userId")
+
+    @Mapping(
+            target = "totalAmount",
+            expression = "java(entity.getCartItems().stream()" +
+                    ".map(item -> item.getProductVariant()" +
+                    ".getProduct()" +
+                    ".getPrice()" +
+                    ".multiply(java.math.BigDecimal.valueOf(item.getQuantity())))" +
+                    ".reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add))"
+    )
+
     CartResponseDto toDto(Cart entity);
 }

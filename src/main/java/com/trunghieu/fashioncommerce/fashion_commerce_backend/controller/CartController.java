@@ -1,6 +1,8 @@
 package com.trunghieu.fashioncommerce.fashion_commerce_backend.controller;
 
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.request.CartItemRequestDto;
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.request.UpdateCartItemQuantityRequestDto;
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.request.UpdateCartItemVariantRequestDto;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.response.CartResponseDto;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.security.CustomUserDetails;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.service.CartService;
@@ -21,7 +23,8 @@ public class CartController {
 
     @GetMapping("/user/{userId}")
     @PreAuthorize("hasRole('ADMIN') or #userId == authentication.principal.id")
-    // ADMIN có thể xem giỏ hàng của bất kỳ user nào. CUSTOMER chỉ có thể xem giỏ hàng của chính mình.
+    // ADMIN có thể xem giỏ hàng của bất kỳ user nào. CUSTOMER chỉ có thể xem giỏ
+    // hàng của chính mình.
     public ResponseEntity<CartResponseDto> getCartByUserId(@PathVariable Long userId) {
         CartResponseDto cart = cartService.getCartByUserId(userId);
         return ResponseEntity.ok(cart);
@@ -29,7 +32,8 @@ public class CartController {
 
     @PostMapping("/user/{userId}/items")
     @PreAuthorize("hasRole('ADMIN') or #userId == authentication.principal.id")
-    // ADMIN có thể thêm sản phẩm vào giỏ hàng của bất kỳ user nào. CUSTOMER chỉ có thể thêm vào giỏ hàng của chính mình.
+    // ADMIN có thể thêm sản phẩm vào giỏ hàng của bất kỳ user nào. CUSTOMER chỉ có
+    // thể thêm vào giỏ hàng của chính mình.
     public ResponseEntity<CartResponseDto> addProductToCart(
             @PathVariable Long userId,
             @Valid @RequestBody CartItemRequestDto cartItemRequestDto) {
@@ -39,18 +43,35 @@ public class CartController {
 
     @PutMapping("/user/{userId}/items/{cartItemId}")
     @PreAuthorize("hasRole('ADMIN') or #userId == authentication.principal.id")
-    // ADMIN có thể cập nhật số lượng sản phẩm trong giỏ hàng của bất kỳ user nào. CUSTOMER chỉ có thể cập nhật giỏ hàng của chính mình.
+    // ADMIN có thể cập nhật số lượng sản phẩm trong giỏ hàng của bất kỳ user nào.
+    // CUSTOMER chỉ có thể cập nhật giỏ hàng của chính mình.
     public ResponseEntity<CartResponseDto> updateCartItemQuantity(
             @PathVariable Long userId,
             @PathVariable Long cartItemId,
-            @RequestParam Integer quantity) {
-        CartResponseDto updatedCart = cartService.updateCartItemQuantity(userId, cartItemId, quantity);
+            @Valid @RequestBody UpdateCartItemQuantityRequestDto requestDto) {
+        CartResponseDto updatedCart = cartService.updateCartItemQuantity(userId, cartItemId, requestDto.getQuantity());
+        return ResponseEntity.ok(updatedCart);
+    }
+
+    @PutMapping("/user/{userId}/items/{cartItemId}/variant")
+    @PreAuthorize("hasRole('ADMIN') or #userId == authentication.principal.id")
+    public ResponseEntity<CartResponseDto> updateCartItemVariant(
+            @PathVariable Long userId,
+            @PathVariable Long cartItemId,
+            @Valid @RequestBody UpdateCartItemVariantRequestDto requestDto) {
+
+        CartResponseDto updatedCart = cartService.updateCartItemVariant(
+                userId,
+                cartItemId,
+                requestDto);
+
         return ResponseEntity.ok(updatedCart);
     }
 
     @DeleteMapping("/user/{userId}/items/{cartItemId}")
     @PreAuthorize("hasRole('ADMIN') or #userId == authentication.principal.id")
-    // ADMIN có thể xóa sản phẩm khỏi giỏ hàng của bất kỳ user nào. CUSTOMER chỉ có thể xóa khỏi giỏ hàng của chính mình.
+    // ADMIN có thể xóa sản phẩm khỏi giỏ hàng của bất kỳ user nào. CUSTOMER chỉ có
+    // thể xóa khỏi giỏ hàng của chính mình.
     public ResponseEntity<Void> removeCartItem(
             @PathVariable Long userId,
             @PathVariable Long cartItemId) {
@@ -60,7 +81,8 @@ public class CartController {
 
     @DeleteMapping("/user/{userId}")
     @PreAuthorize("hasRole('ADMIN') or #userId == authentication.principal.id")
-    // ADMIN có thể xóa toàn bộ giỏ hàng của bất kỳ user nào. CUSTOMER chỉ có thể xóa giỏ hàng của chính mình.
+    // ADMIN có thể xóa toàn bộ giỏ hàng của bất kỳ user nào. CUSTOMER chỉ có thể
+    // xóa giỏ hàng của chính mình.
     public ResponseEntity<Void> clearCart(@PathVariable Long userId) {
         cartService.clearCart(userId);
         return ResponseEntity.noContent().build();

@@ -45,9 +45,11 @@ public class AuthController {
         UserDetails userDetails = userDetailsService.loadUserByUsername(request.getUsername());
         String jwtToken = jwtService.generateToken(userDetails);
         String refreshToken = jwtService.generateRefreshToken(userDetails);
+        UserResponseDto userResponseDto = userService.getUserByUsername(request.getUsername());
         return ResponseEntity.ok(AuthResponse.builder()
                 .accessToken(jwtToken)
                 .refreshToken(refreshToken)
+                .user(userResponseDto)
                 .build());
     }
 }

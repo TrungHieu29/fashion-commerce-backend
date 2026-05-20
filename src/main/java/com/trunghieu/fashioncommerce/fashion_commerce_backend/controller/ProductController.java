@@ -38,14 +38,12 @@ public class ProductController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'CUSTOMER')") // ADMIN và CUSTOMER đều có thể xem sản phẩm theo ID
     public ResponseEntity<ProductResponseDto> getProductById(@PathVariable Long id) {
         ProductResponseDto product = productService.getProductById(id);
         return ResponseEntity.ok(product);
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'CUSTOMER')") // ADMIN và CUSTOMER đều có thể xem tất cả sản phẩm
     public ResponseEntity<Page<ProductResponseDto>> getAllProducts(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
@@ -55,7 +53,6 @@ public class ProductController {
     }
 
     @GetMapping("/shop/{shopId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'CUSTOMER')") // ADMIN và CUSTOMER đều có thể xem sản phẩm theo Shop ID
     public ResponseEntity<Page<ProductResponseDto>> getProductsByShopId(
             @PathVariable Long shopId,
             @RequestParam(defaultValue = "0") int page,
@@ -66,7 +63,6 @@ public class ProductController {
     }
 
     @GetMapping("/category/{categoryId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'CUSTOMER')") // ADMIN và CUSTOMER đều có thể xem sản phẩm theo Category ID
     public ResponseEntity<Page<ProductResponseDto>> getProductsByCategoryId(
             @PathVariable Long categoryId,
             @RequestParam(defaultValue = "0") int page,
@@ -77,7 +73,6 @@ public class ProductController {
     }
 
     @GetMapping("/brand/{brandId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'CUSTOMER')") // ADMIN và CUSTOMER đều có thể xem sản phẩm theo Brand ID
     public ResponseEntity<Page<ProductResponseDto>> getProductsByBrandId(
             @PathVariable Long brandId,
             @RequestParam(defaultValue = "0") int page,
@@ -88,7 +83,6 @@ public class ProductController {
     }
 
     @GetMapping("/search")
-    @PreAuthorize("hasAnyRole('ADMIN', 'CUSTOMER')") // ADMIN và CUSTOMER đều có thể tìm kiếm sản phẩm
     public ResponseEntity<Page<ProductResponseDto>> searchProducts(
             @RequestParam String keyword,
             @RequestParam(defaultValue = "0") int page,

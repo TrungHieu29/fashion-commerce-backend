@@ -27,14 +27,12 @@ public class ProductBrandController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','CUSTOMER')")
     public ResponseEntity<ProductBrandResponseDto> getProductBrandById(@PathVariable Long id) {
         ProductBrandResponseDto productBrand = productBrandService.getProductBrandById(id);
         return ResponseEntity.ok(productBrand);
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','CUSTOMER')")
     public ResponseEntity<List<ProductBrandResponseDto>> getAllProductBrands() {
         List<ProductBrandResponseDto> productBrands = productBrandService.getAllProductBrands();
         return ResponseEntity.ok(productBrands);

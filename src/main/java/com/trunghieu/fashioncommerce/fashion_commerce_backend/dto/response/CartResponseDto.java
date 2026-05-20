@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Set;
 
@@ -17,4 +18,5 @@ public class CartResponseDto {
     private Long userId;
     private LocalDateTime updatedAt;
     private Set<CartItemResponseDto> cartItems;
+    private BigDecimal totalAmount;
 }

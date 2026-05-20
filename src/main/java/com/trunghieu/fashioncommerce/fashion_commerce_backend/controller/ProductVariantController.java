@@ -30,21 +30,18 @@ public class ProductVariantController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'CUSTOMER')") // ADMIN và CUSTOMER đều có thể xem biến thể theo ID
     public ResponseEntity<ProductVariantResponseDto> getProductVariantById(@PathVariable Long id) {
         ProductVariantResponseDto variant = productVariantService.getProductVariantById(id);
         return ResponseEntity.ok(variant);
     }
 
     @GetMapping("/product/{productId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'CUSTOMER')") // ADMIN và CUSTOMER đều có thể xem biến thể theo Product ID
     public ResponseEntity<List<ProductVariantResponseDto>> getProductVariantsByProductId(@PathVariable Long productId) {
         List<ProductVariantResponseDto> variants = productVariantService.getProductVariantsByProductId(productId);
         return ResponseEntity.ok(variants);
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'CUSTOMER')") // ADMIN và CUSTOMER đều có thể xem tất cả biến thể
     public ResponseEntity<List<ProductVariantResponseDto>> getAllProductVariants() {
         List<ProductVariantResponseDto> variants = productVariantService.getAllProductVariants();
         return ResponseEntity.ok(variants);

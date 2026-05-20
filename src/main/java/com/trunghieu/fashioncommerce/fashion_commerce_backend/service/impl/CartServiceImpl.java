@@ -1,6 +1,7 @@
 package com.trunghieu.fashioncommerce.fashion_commerce_backend.service.impl;
 
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.request.CartItemRequestDto;
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.request.UpdateCartItemVariantRequestDto;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.response.CartResponseDto;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.Cart;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.CartItem;
@@ -48,7 +49,8 @@ public class CartServiceImpl implements CartService {
                 .orElseGet(() -> createNewCartForUser(userId));
 
         ProductVariant productVariant = productVariantRepository.findById(cartItemRequestDto.getProductVariantId())
-                .orElseThrow(() -> new ResourceNotFoundException("Product Variant not found with id: " + cartItemRequestDto.getProductVariantId()));
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Product Variant not found with id: " + cartItemRequestDto.getProductVariantId()));
 
         // Kiểm tra số lượng trong kho
         if (productVariant.getStock() < cartItemRequestDto.getQuantity()) {
@@ -64,7 +66,8 @@ public class CartServiceImpl implements CartService {
             CartItem item = existingCartItem.get();
             int newQuantity = item.getQuantity() + cartItemRequestDto.getQuantity();
             if (productVariant.getStock() < newQuantity) {
-                throw new IllegalArgumentException("Not enough stock for product variant: " + productVariant.getId() + " with requested total quantity.");
+                throw new IllegalArgumentException("Not enough stock for product variant: " + productVariant.getId()
+                        + " with requested total quantity.");
             }
             item.setQuantity(newQuantity);
             item.setUpdatedAt(LocalDateTime.now());
@@ -96,7 +99,8 @@ public class CartServiceImpl implements CartService {
         CartItem cartItem = cart.getCartItems().stream()
                 .filter(item -> item.getId().equals(cartItemId))
                 .findFirst()
-                .orElseThrow(() -> new ResourceNotFoundException("Cart Item not found with id: " + cartItemId + " in user's cart."));
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Cart Item not found with id: " + cartItemId + " in user's cart."));
 
         ProductVariant productVariant = cartItem.getProductVariant();
 
@@ -122,6 +126,74 @@ public class CartServiceImpl implements CartService {
 
     @Override
     @Transactional
+    public CartResponseDto updateCartItemVariant(
+            Long userId,
+            Long cartItemId,
+            UpdateCartItemVariantRequestDto requestDto) {
+
+        Cart cart = cartRepository.findByUserId(userId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Cart not found"));
+
+        CartItem cartItem = cart.getCartItems().stream()
+                .filter(item -> item.getId().equals(cartItemId))
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Cart item not found"));
+
+        ProductVariant newVariant = productVariantRepository
+                .findById(requestDto.getProductVariantId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Product variant not found"));
+
+        // quantity hiện tại
+        int currentQuantity = cartItem.getQuantity();
+
+        // check stock
+        if (newVariant.getStock() < currentQuantity) {
+            throw new IllegalArgumentException("Not enough stock");
+        }
+
+        // check variant mới đã tồn tại trong cart chưa
+        Optional<CartItem> existingItem = cart.getCartItems().stream()
+                .filter(item -> !item.getId().equals(cartItemId)
+                        && item.getProductVariant().getId().equals(newVariant.getId()))
+                .findFirst();
+
+        if (existingItem.isPresent()) {
+
+            CartItem item = existingItem.get();
+
+            int totalQuantity = item.getQuantity() + currentQuantity;
+
+            if (newVariant.getStock() < totalQuantity) {
+                throw new IllegalArgumentException("Not enough stock");
+            }
+
+            item.setQuantity(totalQuantity);
+            item.setUpdatedAt(LocalDateTime.now());
+
+            cartItemRepository.save(item);
+
+            cart.getCartItems().remove(cartItem);
+            cartItemRepository.delete(cartItem);
+
+        } else {
+
+            cartItem.setProductVariant(newVariant);
+            cartItem.setUpdatedAt(LocalDateTime.now());
+
+            cartItemRepository.save(cartItem);
+        }
+
+        cart.setUpdatedAt(LocalDateTime.now());
+        cartRepository.save(cart);
+
+        return cartMapper.toDto(cart);
+    }
+
+    @Override
+    @Transactional
     public void removeCartItem(Long userId, Long cartItemId) {
         Cart cart = cartRepository.findByUserId(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Cart not found for user with id: " + userId));
@@ -129,7 +201,8 @@ public class CartServiceImpl implements CartService {
         CartItem cartItem = cart.getCartItems().stream()
                 .filter(item -> item.getId().equals(cartItemId))
                 .findFirst()
-                .orElseThrow(() -> new ResourceNotFoundException("Cart Item not found with id: " + cartItemId + " in user's cart."));
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Cart Item not found with id: " + cartItemId + " in user's cart."));
 
         cart.getCartItems().remove(cartItem);
         cartItemRepository.delete(cartItem);
