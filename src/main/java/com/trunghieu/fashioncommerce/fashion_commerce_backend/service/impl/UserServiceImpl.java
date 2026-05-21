@@ -1,6 +1,7 @@
 package com.trunghieu.fashioncommerce.fashion_commerce_backend.service.impl;
 
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.request.UserRequestDto;
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.request.UserUpdateRequestDto;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.response.UserResponseDto;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.Role;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.User;
@@ -78,24 +79,20 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    public UserResponseDto updateUser(Long id, UserRequestDto requestDto) {
-        User existingUser = userRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
+    public UserResponseDto updateUser(Long id, UserUpdateRequestDto requestDto) {
 
-        // Cập nhật các trường từ requestDto vào existingUser
+        User existingUser = userRepository.findById(id)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("User not found with id: " + id));
+
         existingUser.setFullName(requestDto.getFullName());
-        existingUser.setEmail(requestDto.getEmail());
         existingUser.setPhone(requestDto.getPhone());
         existingUser.setGender(requestDto.getGender());
         existingUser.setDateOfBirth(requestDto.getDateOfBirth());
         existingUser.setAvatar(requestDto.getAvatar());
 
-        // Nếu có mật khẩu mới trong request, mã hóa và cập nhật
-        if (requestDto.getPassword() != null && !requestDto.getPassword().isEmpty()) {
-            existingUser.setPasswordHash(passwordEncoder.encode(requestDto.getPassword()));
-        }
-
         userRepository.save(existingUser);
+
         return userMapper.toDto(existingUser);
     }
 

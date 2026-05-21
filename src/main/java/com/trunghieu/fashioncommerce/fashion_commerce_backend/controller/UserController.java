@@ -1,6 +1,7 @@
 package com.trunghieu.fashioncommerce.fashion_commerce_backend.controller;
 
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.request.UserRequestDto;
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.request.UserUpdateRequestDto;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.response.UserResponseDto;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.service.UserService;
 import jakarta.validation.Valid;
@@ -44,7 +45,7 @@ public class UserController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or #id == authentication.principal.id") // Chỉ ADMIN hoặc chính người dùng
-    public ResponseEntity<UserResponseDto> updateUser(@PathVariable Long id, @Valid @RequestBody UserRequestDto requestDto, Authentication authentication) {
+    public ResponseEntity<UserResponseDto> updateUser(@PathVariable Long id, @Valid @RequestBody UserUpdateRequestDto requestDto, Authentication authentication) {
         UserResponseDto updatedUser = userService.updateUser(id, requestDto);
         return ResponseEntity.ok(updatedUser);
     }

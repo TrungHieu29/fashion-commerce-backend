@@ -4,6 +4,8 @@ import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.enums.Gende
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.enums.UserStatus; // Import UserStatus
 import jakarta.persistence.*;
 import lombok.*;
+
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Set;
 
@@ -48,7 +50,7 @@ public class User {
     private Gender gender; // Change type to Gender
 
     @Column(name = "date_of_birth") // Added @Column
-    private LocalDateTime dateOfBirth;
+    private LocalDate dateOfBirth;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;

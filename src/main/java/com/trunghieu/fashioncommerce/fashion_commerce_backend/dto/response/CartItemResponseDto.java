@@ -21,4 +21,5 @@ public class CartItemResponseDto {
     private BigDecimal price; // Giá tại thời điểm xem giỏ hàng
     private String imageUrl;
     private BigDecimal subtotal;
+    private Long productId;
 }

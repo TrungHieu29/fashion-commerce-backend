@@ -7,6 +7,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Data
@@ -22,7 +23,7 @@ public class UserResponseDto {
     private String email;
     private String avatar;
     private Gender gender; // Đã thay đổi từ String sang Gender enum
-    private LocalDateTime dateOfBirth;
+    private LocalDate dateOfBirth;
     private LocalDateTime createdAt;
     private String roleName; // Chỉ lấy tên Role thay vì cả đối tượng Role
 }

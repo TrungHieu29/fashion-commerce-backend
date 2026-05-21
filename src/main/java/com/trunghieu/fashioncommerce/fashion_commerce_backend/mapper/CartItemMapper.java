@@ -23,6 +23,7 @@ public interface CartItemMapper {
     @Mapping(source = "productVariant.size", target = "size")
     @Mapping(source = "productVariant.color", target = "color")
     @Mapping(source = "productVariant.product.price", target = "price")
+    @Mapping(source = "productVariant.product.id", target = "productId")
     @Mapping(
             target = "subtotal",
             expression = "java(entity.getProductVariant().getProduct().getPrice().multiply(java.math.BigDecimal.valueOf(entity.getQuantity())))"
