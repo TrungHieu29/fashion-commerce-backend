@@ -4,6 +4,7 @@ import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.request.Discou
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.response.DiscountResponseDto;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.Discount;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.Product;
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.enums.DiscountTarget;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.Shop;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.enums.DiscountStatus;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.enums.DiscountType;
@@ -37,20 +38,47 @@ public class DiscountServiceImpl implements DiscountService {
     @Override
     @Transactional
     public DiscountResponseDto createDiscount(DiscountRequestDto requestDto) {
+        validateDiscountRules(requestDto);
+
         Shop shop = shopRepository.findById(requestDto.getShopId())
                 .orElseThrow(() -> new ResourceNotFoundException("Shop not found with id: " + requestDto.getShopId()));
 
-        if (requestDto.getStartDate().isAfter(requestDto.getEndDate())) {
-            throw new IllegalArgumentException("Start date must be before end date");
-        }
-
         Discount discount = discountMapper.toEntity(requestDto);
         discount.setShop(shop);
+        discount.setDiscountTarget(DiscountTarget.valueOf(requestDto.getDiscountTarget().toUpperCase()));
         discount.setDiscountType(DiscountType.valueOf(requestDto.getDiscountType().toUpperCase()));
         discount.setStatus(requestDto.getStatus());
         discount.setProducts(resolveProducts(requestDto.getProductIds()));
 
         return discountMapper.toDto(discountRepository.save(discount));
+    }
+
+    private void validateDiscountRules(DiscountRequestDto dto) {
+        if (dto.getStartDate().isAfter(dto.getEndDate())) {
+            throw new IllegalArgumentException("Start date must be before end date");
+        }
+        if (dto.getDiscountValue().compareTo(java.math.BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Discount value must be greater than 0");
+        }
+
+        DiscountTarget target = DiscountTarget.valueOf(dto.getDiscountTarget().toUpperCase());
+        switch (target) {
+            case PRODUCT:
+                if (dto.getProductIds() == null || dto.getProductIds().isEmpty())
+                    throw new IllegalArgumentException("PRODUCT target requires productIds");
+                break;
+            case SHOP:
+            case ORDER:
+                if (dto.getProductIds() != null && !dto.getProductIds().isEmpty())
+                    throw new IllegalArgumentException(target + " target must not have productIds");
+                if (target == DiscountTarget.ORDER) {
+                    if (dto.getCode() == null || dto.getCode().isBlank())
+                        throw new IllegalArgumentException("ORDER target requires code");
+                    if (dto.getMinOrderValue() == null)
+                        throw new IllegalArgumentException("ORDER target requires minOrderValue");
+                }
+                break;
+        }
     }
 
     @Override
@@ -72,7 +100,8 @@ public class DiscountServiceImpl implements DiscountService {
     @Transactional(readOnly = true)
     public List<DiscountResponseDto> getActiveDiscountsByShopId(Long shopId) {
         LocalDateTime now = LocalDateTime.now();
-        return discountRepository.findByShopIdAndStatusAndStartDateBeforeAndEndDateAfter(shopId, DiscountStatus.ACTIVE, now, now)
+        return discountRepository
+                .findByShopIdAndStatusAndStartDateBeforeAndEndDateAfter(shopId, DiscountStatus.ACTIVE, now, now)
                 .stream()
                 .map(discountMapper::toDto)
                 .collect(Collectors.toList());

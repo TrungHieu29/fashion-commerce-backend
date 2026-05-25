@@ -20,11 +20,14 @@ import java.util.Set;
 public class DiscountRequestDto {
     @NotNull(message = "Shop ID is required")
     private Long shopId;
+    @NotBlank(message = "Discount target is required (SHOP, PRODUCT, ORDER)")
+    private String discountTarget;
     @NotBlank(message = "Discount type is required")
     private String discountType; // PERCENT or FIXED
     @NotNull(message = "Discount value is required")
     @DecimalMin(value = "0.0", inclusive = false)
     private BigDecimal discountValue;
+    private String code; // Required for ORDER target
     @NotNull(message = "Start date is required")
     private LocalDateTime startDate;
     @NotNull(message = "End date is required")

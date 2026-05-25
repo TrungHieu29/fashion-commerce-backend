@@ -25,11 +25,17 @@ public class ProductImage {
     @Column(name = "image_url")
     private String imageUrl;
 
+    @Column(name = "color")
+    private String color;
+
     @Column(name = "created_at") // Added createdAt
     private LocalDateTime createdAt;
 
     @Column(name = "updated_at") // Added updatedAt
     private LocalDateTime updatedAt;
+
+    @Column(name = "public_id")
+    private String publicId;
 
     @PrePersist
     protected void onCreate() {

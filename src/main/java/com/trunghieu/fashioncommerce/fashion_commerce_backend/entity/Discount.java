@@ -1,6 +1,7 @@
 package com.trunghieu.fashioncommerce.fashion_commerce_backend.entity;
 
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.enums.DiscountStatus; // Import DiscountStatus
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.enums.DiscountTarget;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.enums.DiscountType; // Import DiscountType
 import jakarta.persistence.*;
 import lombok.*;
@@ -30,8 +31,15 @@ public class Discount {
     @Column(name = "discount_type")
     private DiscountType discountType; // Change type to DiscountType
 
+    @Column(name = "code")
+    private String code;
+
     @Column(name = "discount_value")
     private BigDecimal discountValue;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "discount_target")
+    private DiscountTarget discountTarget;
 
     @Column(name = "start_date")
     private LocalDateTime startDate;
@@ -53,11 +61,7 @@ public class Discount {
     private LocalDateTime updatedAt;
 
     @ManyToMany
-    @JoinTable(
-        name = "discount_product",
-        joinColumns = @JoinColumn(name = "discount_id"),
-        inverseJoinColumns = @JoinColumn(name = "product_id")
-    )
+    @JoinTable(name = "discount_product", joinColumns = @JoinColumn(name = "discount_id"), inverseJoinColumns = @JoinColumn(name = "product_id"))
     @ToString.Exclude
     private Set<Product> products;
 

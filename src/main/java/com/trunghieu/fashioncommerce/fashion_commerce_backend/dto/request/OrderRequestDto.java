@@ -18,6 +18,8 @@ public class OrderRequestDto {
     @NotNull(message = "User ID cannot be null")
     private Long userId;
 
+    private String voucherCode; // User enters code at checkout
+
     // Loại bỏ totalPrice và finalPrice vì sẽ tính tự động từ cart
 
     private Long addressId; // ID địa chỉ có sẵn

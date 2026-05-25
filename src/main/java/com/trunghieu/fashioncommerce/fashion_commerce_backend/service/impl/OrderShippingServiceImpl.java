@@ -3,9 +3,11 @@ package com.trunghieu.fashioncommerce.fashion_commerce_backend.service.impl;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.request.OrderShippingRequestDto;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.response.OrderShippingResponseDto;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.OrderShipping;
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.OrderItem;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.OrderShop;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.enums.ShippingStatus;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.Order;
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.ProductVariant;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.enums.OrderStatus;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.enums.PaymentMethod;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.enums.PaymentStatus;
@@ -47,7 +49,8 @@ public class OrderShippingServiceImpl implements OrderShippingService {
         orderShipping.setOrderShop(orderShop);
         orderShipping.setAddressSnapshot(orderShop.getAddressSnapshot());
         orderShipping.setShippingStatus(parseShippingStatus(requestDto.getShippingStatus()));
-        orderShipping.setTrackingCode(requestDto.getTrackingCode() != null ? requestDto.getTrackingCode() : generateTrackingCode());
+        orderShipping.setTrackingCode(
+                requestDto.getTrackingCode() != null ? requestDto.getTrackingCode() : generateTrackingCode());
 
         OrderShipping savedShipping = orderShippingRepository.save(orderShipping);
         return orderShippingMapper.toDto(savedShipping);
@@ -65,7 +68,8 @@ public class OrderShippingServiceImpl implements OrderShippingService {
     @Transactional(readOnly = true)
     public OrderShippingResponseDto getOrderShippingByOrderShopId(Long orderShopId) {
         OrderShipping orderShipping = orderShippingRepository.findByOrderShopId(orderShopId)
-                .orElseThrow(() -> new ResourceNotFoundException("OrderShipping not found for OrderShop id: " + orderShopId));
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "OrderShipping not found for OrderShop id: " + orderShopId));
         return orderShippingMapper.toDto(orderShipping);
     }
 
@@ -81,7 +85,8 @@ public class OrderShippingServiceImpl implements OrderShippingService {
         }
         if (requestDto.getTrackingCode() != null) {
             orderShipping.setTrackingCode(requestDto.getTrackingCode());
-            // Tự động chuyển trạng thái sang PROCESSING nếu có tracking code mà đang PENDING
+            // Tự động chuyển trạng thái sang PROCESSING nếu có tracking code mà đang
+            // PENDING
             if (orderShipping.getShippingStatus() == ShippingStatus.PENDING) {
                 updateStatusWorkflow(orderShipping, ShippingStatus.PROCESSING);
             }
@@ -109,7 +114,7 @@ public class OrderShippingServiceImpl implements OrderShippingService {
             case DELIVERED:
                 orderShop.setStatus(OrderStatus.DELIVERED);
                 // Nếu là COD, cập nhật luôn Payment sang COMPLETED (Mockup logic)
-                if (order.getPayment() != null && order.getPayment().getMethod() != null 
+                if (order.getPayment() != null && order.getPayment().getMethod() != null
                         && "COD".equals(order.getPayment().getMethod().name())) {
                     order.getPayment().setStatus(PaymentStatus.COMPLETED);
                 }
@@ -129,11 +134,13 @@ public class OrderShippingServiceImpl implements OrderShippingService {
     }
 
     /**
-     * Cập nhật trạng thái Order tổng dựa trên trạng thái của tất cả OrderShop thành phần
+     * Cập nhật trạng thái Order tổng dựa trên trạng thái của tất cả OrderShop thành
+     * phần
      */
     private void updateParentOrderStatus(Order order) {
         boolean allDelivered = order.getOrderShops().stream().allMatch(s -> s.getStatus() == OrderStatus.DELIVERED);
-        boolean allShipped = order.getOrderShops().stream().allMatch(s -> s.getStatus() == OrderStatus.SHIPPED || s.getStatus() == OrderStatus.DELIVERED);
+        boolean allShipped = order.getOrderShops().stream()
+                .allMatch(s -> s.getStatus() == OrderStatus.SHIPPED || s.getStatus() == OrderStatus.DELIVERED);
         boolean anyCancelled = order.getOrderShops().stream().anyMatch(s -> s.getStatus() == OrderStatus.CANCELLED);
         boolean allCancelled = order.getOrderShops().stream().allMatch(s -> s.getStatus() == OrderStatus.CANCELLED);
         boolean anyReturned = order.getOrderShops().stream().anyMatch(s -> s.getStatus() == OrderStatus.RETURNED);
@@ -141,21 +148,24 @@ public class OrderShippingServiceImpl implements OrderShippingService {
         if (allDelivered) {
             order.setStatus(OrderStatus.DELIVERED);
         } else if (anyReturned) {
-            // Nếu có bất kỳ shop nào bị hoàn hàng, trạng thái order tổng có thể đánh dấu là RETURNED hoặc DELIVERED tùy nghiệp vụ
+            // Nếu có bất kỳ shop nào bị hoàn hàng, trạng thái order tổng có thể đánh dấu là
+            // RETURNED hoặc DELIVERED tùy nghiệp vụ
             order.setStatus(OrderStatus.RETURNED);
         } else if (allShipped) {
             order.setStatus(OrderStatus.SHIPPED);
         } else if (allCancelled) {
             order.setStatus(OrderStatus.CANCELLED);
         }
-        // Lưu ý: Nếu chỉ 1 shop hủy, Order vẫn ở trạng thái PROCESSING hoặc SHIPPED tùy vào các shop còn lại
+        // Lưu ý: Nếu chỉ 1 shop hủy, Order vẫn ở trạng thái PROCESSING hoặc SHIPPED tùy
+        // vào các shop còn lại
     }
 
     /**
      * Hoàn trả số lượng hàng vào kho
      */
     private void replenishStock(OrderShop orderShop) {
-        if (orderShop.getOrderItems() == null) return;
+        if (orderShop.getOrderItems() == null)
+            return;
         orderShop.getOrderItems().forEach(item -> {
             var variant = item.getProductVariant();
             if (variant != null) {
