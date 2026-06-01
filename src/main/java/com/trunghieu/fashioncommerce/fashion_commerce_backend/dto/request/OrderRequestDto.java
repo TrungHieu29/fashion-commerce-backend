@@ -1,5 +1,6 @@
 package com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.request;
 
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.enums.PaymentMethod; // Import PaymentMethod
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.DecimalMin;
 import lombok.AllArgsConstructor;
@@ -19,6 +20,9 @@ public class OrderRequestDto {
     private Long userId;
 
     private String voucherCode; // User enters code at checkout
+
+    @NotNull(message = "Payment method cannot be null") // Thêm validation
+    private PaymentMethod paymentMethod; // Thêm trường paymentMethod
 
     // Loại bỏ totalPrice và finalPrice vì sẽ tính tự động từ cart
 

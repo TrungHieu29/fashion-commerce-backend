@@ -40,26 +40,32 @@ public class OrderController {
         return ResponseEntity.ok(orderService.getOrdersByUserId(userId, pageable));
     }
 
-    @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Page<OrderResponseDto>> getOrdersByStatus(
-            @RequestParam OrderStatus status,
-            Pageable pageable) {
-        return ResponseEntity.ok(orderService.getOrdersByStatus(status, pageable));
-    }
+    // Xóa: @GetMapping
+    // Xóa: @PreAuthorize("hasRole('ADMIN')")
+    // Xóa: public ResponseEntity<Page<OrderResponseDto>> getOrdersByStatus(
+    // Xóa: @RequestParam OrderStatus status,
+    // Xóa: Pageable pageable) {
+    // Xóa: return ResponseEntity.ok(orderService.getOrdersByStatus(status, pageable));
+    // Xóa: }
 
-    @PutMapping("/{orderId}/status")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<OrderResponseDto> updateOrderStatus(
-            @PathVariable Long orderId,
-            @RequestParam OrderStatus status) {
-        return ResponseEntity.ok(orderService.updateOrderStatus(orderId, status));
-    }
+    // Xóa: @PutMapping("/{orderId}/status")
+    // Xóa: @PreAuthorize("hasRole('ADMIN')")
+    // Xóa: public ResponseEntity<OrderResponseDto> updateOrderStatus(
+    // Xóa: @PathVariable Long orderId,
+    // Xóa: @RequestParam OrderStatus status) {
+    // Xóa: return ResponseEntity.ok(orderService.updateOrderStatus(orderId, status));
+    // Xóa: }
 
     @DeleteMapping("/{orderId}")
-    @PreAuthorize("hasRole('ADMIN') or @securityUtils.isOrderOwner(#orderId)")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteOrder(@PathVariable Long orderId) {
         orderService.deleteOrder(orderId);
         return ResponseEntity.noContent().build();
     }
+
+    // Xóa: @PutMapping("/{orderId}/cancel")
+    // Xóa: @PreAuthorize("hasRole('ADMIN') or @securityUtils.isOrderOwner(#orderId)") // Admin hoặc chủ đơn hàng có thể hủy
+    // Xóa: public ResponseEntity<OrderResponseDto> cancelOrder(@PathVariable Long orderId) {
+    // Xóa: return ResponseEntity.ok(orderService.cancelOrder(orderId));
+    // Xóa: }
 }

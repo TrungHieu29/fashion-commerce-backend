@@ -16,6 +16,7 @@ import java.time.LocalDateTime;
 public class DiscountResponseDto {
     private Long id;
     private Long shopId;
+    private String code; // Thêm trường code
     private String discountType;
     private BigDecimal discountValue;
     private LocalDateTime startDate;

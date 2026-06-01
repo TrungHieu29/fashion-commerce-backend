@@ -26,4 +26,5 @@ public class OrderShopResponseDto {
     private OrderStatus status;
     private Set<OrderItemResponseDto> orderItems;
     private OrderShippingResponseDto shipping;
+    private boolean stockDeducted; // Đổi tên trường thành stockDeducted
 }

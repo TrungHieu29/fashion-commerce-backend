@@ -19,12 +19,15 @@ public class ProductResponseDto {
     private String productDetail;
     private Double rating;
     private ProductStatus status; // Đã thay đổi từ Integer sang ProductStatus
-    private BigDecimal price;
+    private BigDecimal originalPrice; // Giá gốc
+    private BigDecimal finalPrice; // Giá sau khi áp discount tốt nhất
+    private BigDecimal discountAmount; // Số tiền được giảm
     private Long shopId;
     private String shopName; // Thêm tên shop để hiển thị
     private Long brandId;
     private String brandName; // Thêm tên brand
     private Long categoryId;
     private String categoryName; // Thêm tên category
-    // Có thể thêm List<ProductImageResponseDto> images; và List<ProductVariantResponseDto> variants; sau
+    // Có thể thêm List<ProductImageResponseDto> images; và
+    // List<ProductVariantResponseDto> variants; sau
 }

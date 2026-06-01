@@ -45,8 +45,14 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
-                                "/swagger-ui.html")
+                                "/swagger-ui.html",
+                                "/redoc.html",
+                                "/redoc.standalone.js")
                         .permitAll()
+                        .requestMatchers(
+                                "/api/products/**",
+                                "/api/product-images/**"
+                        ).permitAll()
                         .requestMatchers("/api/roles/**").permitAll() // Tạm thời cho phép Role API để test
                         .requestMatchers("/ws/**").permitAll() // Cho phép handshake WebSocket
                         .requestMatchers(

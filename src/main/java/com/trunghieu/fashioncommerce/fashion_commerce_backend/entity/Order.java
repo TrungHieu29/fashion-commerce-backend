@@ -1,6 +1,5 @@
 package com.trunghieu.fashioncommerce.fashion_commerce_backend.entity;
 
-import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.enums.OrderStatus; // Import OrderStatus
 import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
@@ -33,9 +32,9 @@ public class Order {
     @Column(name = "address_snapshot", columnDefinition = "TEXT")
     private String addressSnapshot;
 
-    @Enumerated(EnumType.STRING) // Add this annotation
-    @Column(name = "status")
-    private OrderStatus status; // Change type to OrderStatus
+    // @Enumerated(EnumType.STRING) // Xóa annotation này
+    // @Column(name = "status")
+    // private OrderStatus status; // Xóa trường status
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
@@ -46,7 +45,7 @@ public class Order {
     @ToString.Exclude
     private Set<OrderShop> orderShops;
 
-    @OneToOne(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToOne(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY) // Thêm orphanRemoval = true
     @ToString.Exclude
     private Payment payment;
 

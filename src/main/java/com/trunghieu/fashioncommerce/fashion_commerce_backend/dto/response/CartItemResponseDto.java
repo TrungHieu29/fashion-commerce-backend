@@ -22,4 +22,6 @@ public class CartItemResponseDto {
     private String imageUrl;
     private BigDecimal subtotal;
     private Long productId;
+    private Long shopId; // Thêm trường shopId
+    private String shopName; // Thêm trường shopName
 }

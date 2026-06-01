@@ -16,5 +16,6 @@ public interface DiscountMapper {
     Discount toEntity(DiscountRequestDto dto);
 
     @Mapping(source = "shop.id", target = "shopId")
+    @Mapping(source = "code", target = "code") // Thêm mapping cho trường code
     DiscountResponseDto toDto(Discount entity);
 }

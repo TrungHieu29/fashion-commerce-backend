@@ -11,4 +11,5 @@ public interface PaymentService {
     PaymentResponseDto getPaymentById(Long id);
     PaymentResponseDto getPaymentByOrderId(Long orderId);
     PaymentResponseDto updatePaymentStatus(Long paymentId, PaymentStatus status);
+    PaymentResponseDto processOnlinePaymentResult(Long paymentId, PaymentStatus resultStatus); // Thêm phương thức mới
 }

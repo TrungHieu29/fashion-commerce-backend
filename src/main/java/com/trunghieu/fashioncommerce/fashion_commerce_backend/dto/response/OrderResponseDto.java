@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Set; // Import Set
 
 @Data
 @NoArgsConstructor
@@ -19,8 +20,10 @@ public class OrderResponseDto {
     private String userFullName;
     private BigDecimal totalPrice;
     private BigDecimal finalPrice;
-    private OrderStatus status; // Đã thay đổi từ String sang OrderStatus
+    // private OrderStatus status; // Xóa trường status
     private String addressSnapshot;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private Set<OrderShopResponseDto> orderShops; // Thêm trường orderShops
+    private PaymentResponseDto payment; // Thêm trường payment
 }

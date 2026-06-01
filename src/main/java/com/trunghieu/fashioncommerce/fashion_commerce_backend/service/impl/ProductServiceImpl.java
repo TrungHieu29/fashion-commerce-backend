@@ -10,6 +10,7 @@ import com.trunghieu.fashioncommerce.fashion_commerce_backend.exception.Resource
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.mapper.ProductMapper;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.repository.ProductRepository;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.service.CategoryService;
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.service.DiscountService;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.service.ProductBrandService;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.service.ProductService;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.service.ShopService;
@@ -18,6 +19,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
 
 @Service
 @RequiredArgsConstructor
@@ -28,14 +31,17 @@ public class ProductServiceImpl implements ProductService {
     private final ShopService shopService; // Để kiểm tra shop tồn tại
     private final CategoryService categoryService; // Để kiểm tra category tồn tại
     private final ProductBrandService productBrandService; // Để kiểm tra brand tồn tại
+    private final DiscountService discountService;
 
     @Override
     @Transactional
     public ProductResponseDto createProduct(ProductRequestDto requestDto) {
         // Kiểm tra sự tồn tại của Shop, Category, Brand
         shopService.getShopById(requestDto.getShopId()); // Sẽ ném ResourceNotFoundException nếu không tìm thấy
-        categoryService.getCategoryById(requestDto.getCategoryId()); // Sẽ ném ResourceNotFoundException nếu không tìm thấy
-        productBrandService.getProductBrandById(requestDto.getBrandId()); // Sẽ ném ResourceNotFoundException nếu không tìm thấy
+        categoryService.getCategoryById(requestDto.getCategoryId()); // Sẽ ném ResourceNotFoundException nếu không tìm
+                                                                     // thấy
+        productBrandService.getProductBrandById(requestDto.getBrandId()); // Sẽ ném ResourceNotFoundException nếu không
+                                                                          // tìm thấy
 
         Product product = productMapper.toEntity(requestDto);
 
@@ -53,7 +59,7 @@ public class ProductServiceImpl implements ProductService {
         product.setBrand(brand);
 
         product = productRepository.save(product);
-        return productMapper.toDto(product);
+        return enrichProductDto(product);
     }
 
     @Override
@@ -61,40 +67,52 @@ public class ProductServiceImpl implements ProductService {
     public ProductResponseDto getProductById(Long id) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + id));
-        return productMapper.toDto(product);
+        return enrichProductDto(product);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Page<ProductResponseDto> getAllProducts(Pageable pageable) {
-        return productRepository.findAll(pageable).map(productMapper::toDto);
+        return productRepository.findAll(pageable).map(this::enrichProductDto);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Page<ProductResponseDto> getProductsByShopId(Long shopId, Pageable pageable) {
         shopService.getShopById(shopId); // Kiểm tra shop tồn tại
-        return productRepository.findByShopId(shopId, pageable).map(productMapper::toDto);
+        return productRepository.findByShopId(shopId, pageable).map(this::enrichProductDto);
+    }
+
+    private ProductResponseDto enrichProductDto(Product product) {
+        ProductResponseDto dto = productMapper.toDto(product);
+        BigDecimal originalPrice = product.getPrice();
+        BigDecimal discountAmount = discountService.calculateBestDiscount(product.getShop().getId(), product.getId(),
+                originalPrice);
+
+        dto.setOriginalPrice(originalPrice);
+        dto.setDiscountAmount(discountAmount);
+        dto.setFinalPrice(originalPrice.subtract(discountAmount));
+        return dto;
     }
 
     @Override
     @Transactional(readOnly = true)
     public Page<ProductResponseDto> getProductsByCategoryId(Long categoryId, Pageable pageable) {
         categoryService.getCategoryById(categoryId); // Kiểm tra category tồn tại
-        return productRepository.findByCategoryId(categoryId, pageable).map(productMapper::toDto);
+        return productRepository.findByCategoryId(categoryId, pageable).map(this::enrichProductDto);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Page<ProductResponseDto> getProductsByBrandId(Long brandId, Pageable pageable) {
         productBrandService.getProductBrandById(brandId); // Kiểm tra brand tồn tại
-        return productRepository.findByBrandId(brandId, pageable).map(productMapper::toDto);
+        return productRepository.findByBrandId(brandId, pageable).map(this::enrichProductDto);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Page<ProductResponseDto> searchProducts(String keyword, Pageable pageable) {
-        return productRepository.findByProductNameContainingIgnoreCase(keyword, pageable).map(productMapper::toDto);
+        return productRepository.findByProductNameContainingIgnoreCase(keyword, pageable).map(this::enrichProductDto);
     }
 
     @Override
@@ -134,7 +152,7 @@ public class ProductServiceImpl implements ProductService {
         existingProduct.setBrand(brand);
 
         existingProduct = productRepository.save(existingProduct);
-        return productMapper.toDto(existingProduct);
+        return enrichProductDto(existingProduct);
     }
 
     @Override

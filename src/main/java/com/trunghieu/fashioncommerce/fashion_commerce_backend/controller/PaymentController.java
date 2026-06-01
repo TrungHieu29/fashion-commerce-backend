@@ -45,4 +45,12 @@ public class PaymentController {
             @RequestParam PaymentStatus status) {
         return ResponseEntity.ok(paymentService.updatePaymentStatus(id, status));
     }
+
+    @PutMapping("/{paymentId}/process-online-result")
+    @PreAuthorize("hasRole('ADMIN') or @securityUtils.isPaymentOwner(#paymentId)") // Admin hoặc chủ Payment có thể gửi kết quả
+    public ResponseEntity<PaymentResponseDto> processOnlinePaymentResult(
+            @PathVariable Long paymentId,
+            @RequestParam PaymentStatus resultStatus) {
+        return ResponseEntity.ok(paymentService.processOnlinePaymentResult(paymentId, resultStatus));
+    }
 }

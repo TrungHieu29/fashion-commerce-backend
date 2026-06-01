@@ -54,4 +54,7 @@ public class OrderShop {
     @OneToOne(mappedBy = "orderShop", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @ToString.Exclude
     private OrderShipping shipping;
+
+    @Column(name = "stock_deducted", nullable = false)
+    private boolean stockDeducted = false; // Đổi tên trường thành stockDeducted
 }

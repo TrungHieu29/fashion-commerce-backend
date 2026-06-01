@@ -40,4 +40,28 @@ public class OrderShopController {
             Pageable pageable) {
         return ResponseEntity.ok(orderShopService.getOrderShopsByShopId(shopId, pageable));
     }
+
+    @PutMapping("/{orderShopId}/confirm-delivery")
+    @PreAuthorize("hasRole('ADMIN') or @securityUtils.isOrderShopOwner(#orderShopId)")
+    public ResponseEntity<OrderShopResponseDto> confirmOrderShopDelivery(@PathVariable Long orderShopId) {
+        return ResponseEntity.ok(orderShopService.confirmDelivery(orderShopId));
+    }
+
+    @PutMapping("/{orderShopId}/request-return")
+    @PreAuthorize("hasRole('ADMIN') or @securityUtils.isOrderShopOwner(#orderShopId)") // Admin hoặc chủ OrderShop có thể yêu cầu trả hàng
+    public ResponseEntity<OrderShopResponseDto> requestOrderShopReturn(@PathVariable Long orderShopId) {
+        return ResponseEntity.ok(orderShopService.requestReturn(orderShopId));
+    }
+
+    @PutMapping("/{orderShopId}/cancel")
+    @PreAuthorize("hasRole('ADMIN') or @securityUtils.isOrderShopOwner(#orderShopId)") // Admin hoặc chủ OrderShop có thể hủy
+    public ResponseEntity<OrderShopResponseDto> cancelOrderShop(@PathVariable Long orderShopId) {
+        return ResponseEntity.ok(orderShopService.cancelOrderShop(orderShopId));
+    }
+
+    @PutMapping("/{orderShopId}/confirm-order")
+    @PreAuthorize("hasRole('ADMIN') or @securityUtils.isOrderShopOwner(#orderShopId)") // Admin hoặc chủ OrderShop có thể xác nhận đơn hàng
+    public ResponseEntity<OrderShopResponseDto> confirmOrder(@PathVariable Long orderShopId) {
+        return ResponseEntity.ok(orderShopService.confirmOrder(orderShopId));
+    }
 }

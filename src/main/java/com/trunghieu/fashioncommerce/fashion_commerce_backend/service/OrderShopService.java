@@ -11,4 +11,9 @@ public interface OrderShopService {
     Page<OrderShopResponseDto> getOrderShopsByOrderId(Long orderId, Pageable pageable);
 
     Page<OrderShopResponseDto> getOrderShopsByShopId(Long shopId, Pageable pageable);
+
+    OrderShopResponseDto confirmDelivery(Long orderShopId);
+    OrderShopResponseDto requestReturn(Long orderShopId);
+    OrderShopResponseDto cancelOrderShop(Long orderShopId);
+    OrderShopResponseDto confirmOrder(Long orderShopId); // Thêm phương thức mới
 }

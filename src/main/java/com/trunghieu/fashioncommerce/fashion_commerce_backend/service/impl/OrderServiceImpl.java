@@ -2,17 +2,19 @@ package com.trunghieu.fashioncommerce.fashion_commerce_backend.service.impl;
 
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.request.OrderRequestDto;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.response.OrderResponseDto;
-import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.response.DiscountResponseDto;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.*;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.enums.OrderStatus;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.enums.DiscountTarget;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.enums.DiscountType;
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.enums.PaymentMethod; // Import PaymentMethod
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.enums.PaymentStatus; // Import PaymentStatus
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.enums.ShippingStatus;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.exception.ResourceNotFoundException;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.mapper.OrderMapper;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.repository.*;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.service.DiscountService;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.service.OrderService;
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.service.PaymentService; // Import PaymentService
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -20,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -34,12 +37,14 @@ public class OrderServiceImpl implements OrderService {
         private final ShopRepository shopRepository;
         private final ProductRepository productRepository;
         private final ProductImageRepository productImageRepository;
-        private final OrderShopRepository orderShopRepository;
+        private final OrderShopRepository orderShopRepository; // Inject OrderShopRepository
         private final OrderItemRepository orderItemRepository;
         private final ShippingAddressRepository shippingAddressRepository;
-        private final DiscountRepository discountRepository;
+        private final DiscountRepository discountRepository; // Vẫn giữ để lấy Discount entity nếu cần
         private final DiscountService discountService;
         private final OrderMapper orderMapper;
+        private final ProductVariantRepository productVariantRepository; // Inject ProductVariantRepository
+        private final PaymentService paymentService; // Inject PaymentService
 
         @Override
         @Transactional
@@ -68,12 +73,20 @@ public class OrderServiceImpl implements OrderService {
                 // Tạo Order
                 Order order = Order.builder()
                                 .user(user)
-                                .status(OrderStatus.PENDING)
                                 .addressSnapshot(addressSnapshot)
                                 .build();
 
+                // Tạo Payment dựa trên paymentMethod từ requestDto
+                Payment payment = Payment.builder()
+                        .method(requestDto.getPaymentMethod()) // Lấy phương thức thanh toán từ requestDto
+                        .status(PaymentStatus.PENDING) // Trạng thái ban đầu luôn là PENDING
+                        .order(order) // Liên kết Payment với Order
+                        .build();
+                order.setPayment(payment); // Gán Payment cho Order
+
                 Set<OrderShop> orderShops = new HashSet<>();
                 BigDecimal totalOrderPrice = BigDecimal.ZERO;
+                LocalDateTime orderCreationTime = LocalDateTime.now(); // Chụp thời điểm hiện tại một lần
 
                 // Tạo OrderShop cho mỗi shop
                 for (Map.Entry<Long, List<CartItem>> entry : itemsByShop.entrySet()) {
@@ -91,12 +104,12 @@ public class OrderServiceImpl implements OrderService {
                                         .status(OrderStatus.PENDING)
                                         .build();
 
-                        // 1. Tính discount tự động tốt nhất cho từng sản phẩm (SHOP vs PRODUCT)
-                        List<Discount> activeAutoDiscounts = fetchActiveAutoDiscounts(shopId);
-
                         Set<OrderItem> orderItems = shopCartItems.stream().map(cartItem -> {
                                 OrderItem item = createOrderItemFromCartItem(cartItem, orderShop);
-                                applyBestAutoDiscount(item, activeAutoDiscounts);
+                                // Tự động lấy giá đã giảm tốt nhất
+                                BigDecimal discount = discountService.calculateBestDiscount(shopId,
+                                                item.getProductVariant().getProduct().getId(), item.getPrice());
+                                item.setPrice(item.getPrice().subtract(discount));
                                 return item;
                         }).collect(Collectors.toSet());
 
@@ -110,11 +123,28 @@ public class OrderServiceImpl implements OrderService {
 
                         // 3. Áp dụng ORDER voucher (nếu có nhập mã)
                         BigDecimal shopFinalPrice = subtotal;
-                        if (requestDto.getVoucherCode() != null) {
-                                Discount voucher = findOrderVoucher(shopId, requestDto.getVoucherCode(), subtotal);
-                                if (voucher != null) {
-                                        orderShop.setDiscount(voucher);
-                                        shopFinalPrice = subtotal.subtract(calculateDiscountAmount(voucher, subtotal));
+                        if (requestDto.getVoucherCode() != null && !requestDto.getVoucherCode().isBlank()) {
+                                // Sử dụng DiscountService để áp dụng voucher với thời điểm đã chụp
+                                BigDecimal voucherDiscountAmount = discountService.applyOrderVoucher(
+                                        shopId,
+                                        requestDto.getVoucherCode(),
+                                        subtotal,
+                                        orderCreationTime // Sử dụng thời điểm đã chụp
+                                );
+                                if (voucherDiscountAmount.compareTo(BigDecimal.ZERO) > 0) {
+                                    // Lấy lại Discount entity để gán vào OrderShop nếu voucher hợp lệ
+                                    Discount appliedVoucher = discountRepository
+                                            .findByShopIdAndCodeAndStatus(shopId, requestDto.getVoucherCode(),
+                                                    com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.enums.DiscountStatus.ACTIVE)
+                                            .filter(d -> d.getDiscountTarget() == DiscountTarget.ORDER)
+                                            .filter(d -> d.getStartDate().isBefore(orderCreationTime) && d.getEndDate().isAfter(orderCreationTime)) // Sử dụng thời điểm đã chụp
+                                            .filter(d -> d.getMinOrderValue() == null || subtotal.compareTo(d.getMinOrderValue()) >= 0)
+                                            .orElse(null);
+
+                                    if (appliedVoucher != null) {
+                                        orderShop.setDiscount(appliedVoucher);
+                                        shopFinalPrice = subtotal.subtract(voucherDiscountAmount);
+                                    }
                                 }
                         }
                         orderShop.setFinalPrice(shopFinalPrice);
@@ -129,7 +159,7 @@ public class OrderServiceImpl implements OrderService {
                                         .build();
                         orderShop.setShipping(shipping);
 
-                        orderShops.add(orderShop);
+                        orderShops.add(orderShop); // Sửa lỗi: Thêm orderShop vào tập hợp
                 }
 
                 order.setOrderShops(orderShops);
@@ -203,55 +233,6 @@ public class OrderServiceImpl implements OrderService {
                 return String.format("%s | %s | %s, %s, %s", name, phone, line, district, city);
         }
 
-        private List<Discount> fetchActiveAutoDiscounts(Long shopId) {
-                return discountRepository.findByShopIdAndStatusAndStartDateBeforeAndEndDateAfter(
-                                shopId,
-                                com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.enums.DiscountStatus.ACTIVE,
-                                LocalDateTime.now(), LocalDateTime.now())
-                                .stream()
-                                .filter(d -> d.getDiscountTarget() == DiscountTarget.SHOP
-                                                || d.getDiscountTarget() == DiscountTarget.PRODUCT)
-                                .collect(Collectors.toList());
-        }
-
-        private void applyBestAutoDiscount(OrderItem item, List<Discount> discounts) {
-                Long productId = item.getProductVariant().getProduct().getId();
-                BigDecimal originalPrice = item.getPrice();
-
-                // Lấy tất cả discount áp dụng được cho sản phẩm này (toàn shop HOẶC đúng ID sản
-                // phẩm)
-                Optional<BigDecimal> maxReduction = discounts.stream()
-                                .filter(d -> d.getDiscountTarget() == DiscountTarget.SHOP ||
-                                                (d.getDiscountTarget() == DiscountTarget.PRODUCT
-                                                                && d.getProducts().stream().anyMatch(
-                                                                                p -> p.getId().equals(productId))))
-                                .map(d -> calculateDiscountAmount(d, originalPrice))
-                                .max(BigDecimal::compareTo);
-
-                // Nếu có giảm giá, cập nhật lại giá snapshot của OrderItem
-                maxReduction.ifPresent(reduction -> item.setPrice(originalPrice.subtract(reduction)));
-        }
-
-        private Discount findOrderVoucher(Long shopId, String code, BigDecimal subtotal) {
-                return discountRepository
-                                .findByShopIdAndCodeAndStatus(shopId, code,
-                                                com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.enums.DiscountStatus.ACTIVE)
-                                .filter(d -> d.getDiscountTarget() == DiscountTarget.ORDER)
-                                .filter(d -> d.getStartDate().isBefore(LocalDateTime.now())
-                                                && d.getEndDate().isAfter(LocalDateTime.now()))
-                                .filter(d -> d.getMinOrderValue() == null
-                                                || subtotal.compareTo(d.getMinOrderValue()) >= 0)
-                                .orElse(null);
-        }
-
-        private BigDecimal calculateDiscountAmount(Discount discount, BigDecimal totalPrice) {
-                if (discount.getDiscountType() == DiscountType.PERCENT) {
-                        return totalPrice.multiply(discount.getDiscountValue()).divide(BigDecimal.valueOf(100));
-                } else {
-                        return discount.getDiscountValue();
-                }
-        }
-
         private OrderItem createOrderItemFromCartItem(CartItem cartItem, OrderShop orderShop) {
                 ProductVariant variant = cartItem.getProductVariant();
                 Product product = variant.getProduct();
@@ -299,28 +280,50 @@ public class OrderServiceImpl implements OrderService {
         }
 
         @Override
-        @Transactional(readOnly = true)
-        public Page<OrderResponseDto> getOrdersByStatus(OrderStatus status, Pageable pageable) {
-                return orderRepository.findByStatus(status, pageable)
-                                .map(orderMapper::toDto);
-        }
-
-        @Override
-        @Transactional
-        public OrderResponseDto updateOrderStatus(Long orderId, OrderStatus status) {
-                Order order = orderRepository.findById(orderId)
-                                .orElseThrow(() -> new ResourceNotFoundException(
-                                                "Order not found with id: " + orderId));
-                order.setStatus(status);
-                return orderMapper.toDto(orderRepository.save(order));
-        }
-
-        @Override
         @Transactional
         public void deleteOrder(Long orderId) {
                 if (!orderRepository.existsById(orderId)) {
                         throw new ResourceNotFoundException("Order not found with id: " + orderId);
                 }
                 orderRepository.deleteById(orderId);
+        }
+
+        @Override
+        public void replenishStock(OrderShop orderShop) { // Đổi thành public để OrderShopServiceImpl có thể gọi
+            if (orderShop.getOrderItems() == null)
+                return;
+            // Chỉ hoàn kho nếu stock đã bị trừ
+            if (orderShop.isStockDeducted()) {
+                orderShop.getOrderItems().forEach(item -> {
+                    var variant = item.getProductVariant();
+                    if (variant != null) {
+                        variant.setStock(variant.getStock() + item.getQuantity());
+                        productVariantRepository.save(variant);
+                    }
+                });
+                orderShop.setStockDeducted(false); // Đặt lại cờ sau khi hoàn kho
+                orderShopRepository.save(orderShop); // Lưu OrderShop để cập nhật cờ
+            }
+        }
+
+        @Override
+        public void deductStock(OrderShop orderShop) {
+            if (orderShop.getOrderItems() == null)
+                return;
+            // Chỉ trừ kho nếu stock chưa bị trừ
+            if (!orderShop.isStockDeducted()) {
+                orderShop.getOrderItems().forEach(item -> {
+                    var variant = item.getProductVariant();
+                    if (variant != null) {
+                        if (variant.getStock() < item.getQuantity()) {
+                            throw new IllegalArgumentException("Sản phẩm " + variant.getProduct().getProductName() + " không đủ tồn kho");
+                        }
+                        variant.setStock(variant.getStock() - item.getQuantity());
+                        productVariantRepository.save(variant);
+                    }
+                });
+                orderShop.setStockDeducted(true); // Đặt cờ sau khi trừ kho
+                orderShopRepository.save(orderShop); // Lưu OrderShop để cập nhật cờ
+            }
         }
 }

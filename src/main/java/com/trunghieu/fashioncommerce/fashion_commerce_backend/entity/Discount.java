@@ -10,7 +10,9 @@ import java.time.LocalDateTime;
 import java.util.Set;
 
 @Entity
-@Table(name = "discounts")
+@Table(name = "discounts", uniqueConstraints = {
+    @UniqueConstraint(columnNames = {"shop_id", "code", "status"}) // Thêm ràng buộc duy nhất
+})
 @Getter
 @Setter
 @NoArgsConstructor

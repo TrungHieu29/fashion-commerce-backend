@@ -13,15 +13,17 @@ public interface OrderMapper {
     @Mapping(target = "id", ignore = true) // Corrected from orderId to id
     @Mapping(target = "totalPrice", ignore = true)
     @Mapping(target = "finalPrice", ignore = true)
-    @Mapping(target = "status", expression = "java(OrderStatus.PENDING)")
+    // @Mapping(target = "status", expression = "java(OrderStatus.PENDING)") // Xóa ánh xạ status
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "user", ignore = true)
-    @Mapping(target = "orderShops", ignore = true)
-    @Mapping(target = "payment", ignore = true)
+    @Mapping(target = "orderShops", ignore = true) // Vẫn ignore khi map từ RequestDto
+    @Mapping(target = "payment", ignore = true)    // Vẫn ignore khi map từ RequestDto
     Order toEntity(OrderRequestDto orderRequestDto);
 
     @Mapping(source = "user.id", target = "userId")
     @Mapping(source = "user.fullName", target = "userFullName")
+    @Mapping(source = "orderShops", target = "orderShops") // Thêm ánh xạ cho orderShops
+    @Mapping(source = "payment", target = "payment")       // Thêm ánh xạ cho payment
     OrderResponseDto toDto(Order order);
 }

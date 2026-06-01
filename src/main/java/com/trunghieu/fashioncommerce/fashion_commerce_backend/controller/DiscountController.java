@@ -1,6 +1,7 @@
 package com.trunghieu.fashioncommerce.fashion_commerce_backend.controller;
 
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.request.DiscountRequestDto;
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.request.ApplyVoucherRequestDto; // Import DTO mới
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.response.DiscountResponseDto;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.service.DiscountService;
 import jakarta.validation.Valid;
@@ -12,6 +13,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal; // Import BigDecimal
+import java.time.LocalDateTime; // Import LocalDateTime
 import java.util.List;
 
 @RestController
@@ -60,5 +63,18 @@ public class DiscountController {
     public ResponseEntity<Void> deleteDiscount(@PathVariable Long id) {
         discountService.deleteDiscount(id);
         return ResponseEntity.noContent().build();
+    }
+
+    // API mới để áp dụng voucher
+    @PostMapping("/apply-voucher")
+    @PreAuthorize("hasAnyRole('ADMIN', 'CUSTOMER')") // Cả admin và customer đều có thể kiểm tra voucher
+    public ResponseEntity<BigDecimal> applyVoucher(@Valid @RequestBody ApplyVoucherRequestDto requestDto) {
+        BigDecimal discountAmount = discountService.applyOrderVoucher(
+                requestDto.getShopId(),
+                requestDto.getVoucherCode(),
+                requestDto.getSubtotal(),
+                LocalDateTime.now() // Truyền thời điểm hiện tại
+        );
+        return ResponseEntity.ok(discountAmount);
     }
 }
