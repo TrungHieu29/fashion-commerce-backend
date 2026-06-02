@@ -104,8 +104,11 @@ public class OrderShippingServiceImpl implements OrderShippingService {
 
         switch (newStatus) {
             case PROCESSING:
-                // OrderShop.status vẫn là CONFIRMED (nếu đã xác nhận) hoặc PENDING (nếu chưa)
-                // Không tự động chuyển OrderShop sang PROCESSING ở đây nữa
+                // Khi OrderShipping chuyển sang PROCESSING, OrderShop cũng chuyển sang PROCESSING
+                if (orderShop.getStatus() == OrderStatus.CONFIRMED) { // Chỉ chuyển nếu đã CONFIRMED
+                    orderShop.setStatus(OrderStatus.PROCESSING);
+                    orderShopRepository.save(orderShop); // Lưu OrderShop ngay sau khi cập nhật trạng thái
+                }
                 break;
             case SHIPPED:
                 orderShop.setStatus(OrderStatus.SHIPPED);
@@ -139,11 +142,11 @@ public class OrderShippingServiceImpl implements OrderShippingService {
                 }
                 break;
         }
-        orderShopRepository.save(orderShop); // Lưu OrderShop sau khi cập nhật trạng thái
+        // orderShopRepository.save(orderShop); // Xóa dòng này, vì đã lưu bên trong case PROCESSING hoặc các case khác
     }
 
     private ShippingStatus parseShippingStatus(String status) {
-        if (status == null || status == null || status.isBlank()) {
+        if (status == null || status.isBlank()) {
             return ShippingStatus.PENDING;
         }
         try {

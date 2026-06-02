@@ -65,7 +65,11 @@ public class OrderShopServiceImpl implements OrderShopService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<OrderShopResponseDto> getOrderShopsByShopId(Long shopId, Pageable pageable) {
+    public Page<OrderShopResponseDto> getOrderShopsByShopId(Long shopId, OrderStatus status, Pageable pageable) {
+        if (status != null) {
+            return orderShopRepository.findByShopIdAndStatus(shopId, status, pageable)
+                    .map(orderShopMapper::toDto);
+        }
         return orderShopRepository.findByShopId(shopId, pageable)
                 .map(orderShopMapper::toDto);
     }

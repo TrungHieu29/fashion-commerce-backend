@@ -2,6 +2,7 @@ package com.trunghieu.fashioncommerce.fashion_commerce_backend.controller;
 
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.request.OrderShopRequestDto;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.response.OrderShopResponseDto;
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.enums.OrderStatus; // Import OrderStatus
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.service.OrderShopService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -37,8 +38,9 @@ public class OrderShopController {
     @PreAuthorize("hasRole('ADMIN') or @securityUtils.isShopOwner(#shopId)")
     public ResponseEntity<Page<OrderShopResponseDto>> getOrderShopsByShopId(
             @PathVariable Long shopId,
+            @RequestParam(required = false) OrderStatus status, // Thêm tham số status, không bắt buộc
             Pageable pageable) {
-        return ResponseEntity.ok(orderShopService.getOrderShopsByShopId(shopId, pageable));
+        return ResponseEntity.ok(orderShopService.getOrderShopsByShopId(shopId, status, pageable));
     }
 
     @PutMapping("/{orderShopId}/confirm-delivery")

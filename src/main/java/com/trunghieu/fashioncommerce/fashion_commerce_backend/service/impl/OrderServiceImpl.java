@@ -2,6 +2,7 @@ package com.trunghieu.fashioncommerce.fashion_commerce_backend.service.impl;
 
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.request.OrderRequestDto;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.response.OrderResponseDto;
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.response.OrderShopResponseDto;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.*;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.enums.OrderStatus;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.enums.DiscountTarget;
@@ -15,14 +16,20 @@ import com.trunghieu.fashioncommerce.fashion_commerce_backend.repository.*;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.service.DiscountService;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.service.OrderService;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.service.PaymentService; // Import PaymentService
+import jakarta.persistence.criteria.Root;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification; // Import Specification
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import jakarta.persistence.criteria.Predicate; // Import Predicate
+import jakarta.persistence.criteria.Subquery; // Import Subquery
+import jakarta.persistence.criteria.Join; // Import Join
+
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -274,9 +281,45 @@ public class OrderServiceImpl implements OrderService {
 
         @Override
         @Transactional(readOnly = true)
-        public Page<OrderResponseDto> getOrdersByUserId(Long userId, Pageable pageable) {
-                return orderRepository.findByUserId(userId, pageable)
-                                .map(orderMapper::toDto);
+        public Page<OrderResponseDto> getOrdersByUserId(Long userId, List<OrderStatus> shopStatuses, Pageable pageable) {
+            Specification<Order> spec = (root, query, criteriaBuilder) -> {
+                List<Predicate> predicates = new ArrayList<>();
+                predicates.add(criteriaBuilder.equal(root.get("user").get("id"), userId));
+
+                if (shopStatuses != null && !shopStatuses.isEmpty()) {
+                    // Tạo subquery để tìm OrderShop có trạng thái phù hợp
+                    Subquery<Long> subquery = query.subquery(Long.class);
+                    Root<OrderShop> orderShopRoot = subquery.from(OrderShop.class);
+                    subquery.select(orderShopRoot.get("order").get("id"))
+                            .where(orderShopRoot.get("status").in(shopStatuses));
+                    predicates.add(criteriaBuilder.in(root.get("id")).value(subquery));
+                }
+
+                return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
+            };
+
+            // Lấy Page<Order> đã lọc và sắp xếp từ database
+            Page<Order> ordersPage = orderRepository.findAll(spec, pageable);
+
+            // Xử lý hậu kỳ: Lọc OrderShop con trong từng Order
+            List<OrderResponseDto> pageContent = ordersPage.getContent().stream()
+                    .map(order -> {
+                        OrderResponseDto dto = orderMapper.toDto(order);
+                        if (shopStatuses != null && !shopStatuses.isEmpty()) {
+                            // Lọc OrderShop con trong Order đã ánh xạ
+                            Set<OrderShopResponseDto> filteredOrderShops = dto.getOrderShops().stream()
+                                    .filter(orderShopDto -> shopStatuses.contains(orderShopDto.getStatus()))
+                                    .collect(Collectors.toSet());
+                            dto.setOrderShops(filteredOrderShops);
+                        }
+                        return dto;
+                    })
+                    .filter(dto -> !dto.getOrderShops().isEmpty()) // Loại bỏ Order nếu không còn OrderShop nào sau khi lọc
+                    .collect(Collectors.toList());
+
+            // Tạo PageImpl mới với tổng số phần tử đã lọc và sắp xếp
+            // ordersPage.getTotalElements() đã là tổng số Order phù hợp với tiêu chí lọc chính
+            return new PageImpl<>(pageContent, pageable, ordersPage.getTotalElements());
         }
 
         @Override
