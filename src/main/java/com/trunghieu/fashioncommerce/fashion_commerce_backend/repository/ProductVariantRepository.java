@@ -2,6 +2,7 @@ package com.trunghieu.fashioncommerce.fashion_commerce_backend.repository;
 
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.ProductVariant;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -11,4 +12,13 @@ import java.util.Optional;
 public interface ProductVariantRepository extends JpaRepository<ProductVariant, Long> {
     List<ProductVariant> findByProductId(Long productId);
     Optional<ProductVariant> findByProductIdAndSizeAndColor(Long productId, String size, String color);
+    @Query("""
+        SELECT pv.product.id
+        FROM ProductVariant pv
+        WHERE pv.product.shop.id = :shopId
+        AND pv.product.status = com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.enums.ProductStatus.ACTIVE
+        GROUP BY pv.product.id
+        HAVING SUM(pv.stock) <= 5
+    """)
+    List<Long> findLowStockProductIds(Long shopId);
 }

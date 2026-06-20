@@ -55,7 +55,7 @@ public class ReviewServiceImpl implements ReviewService {
 
         // Kiểm tra điều kiện: Chỉ cho phép đánh giá khi đơn hàng đã được giao thành
         // công
-        if (orderItem.getOrderShop().getStatus() != OrderStatus.DELIVERED) {
+        if (orderItem.getOrderShop().getStatus() != OrderStatus.COMPLETED) {
             throw new IllegalArgumentException(
                     "Bạn chỉ có thể đánh giá sản phẩm sau khi đơn hàng đã được giao thành công.");
         }
@@ -65,7 +65,18 @@ public class ReviewServiceImpl implements ReviewService {
         review.setProduct(product);
         review.setOrderItem(orderItem);
 
-        return reviewMapper.toDto(reviewRepository.save(review));
+        Review savedReview = reviewRepository.save(review);
+
+// Tính lại rating trung bình của sản phẩm
+        Double averageRating =
+                reviewRepository.calculateAverageRatingByProductId(product.getId());
+
+// Nếu chưa có review nào thì mặc định 0
+        product.setRating(averageRating != null ? averageRating : 0.0);
+
+        productRepository.save(product);
+
+        return reviewMapper.toDto(savedReview);
     }
 
     @Override
@@ -98,7 +109,19 @@ public class ReviewServiceImpl implements ReviewService {
 
         existing.setComment(requestDto.getComment());
         existing.setRating(requestDto.getRating());
-        return reviewMapper.toDto(reviewRepository.save(existing));
+        Review updatedReview = reviewRepository.save(existing);
+
+        Double averageRating =
+                reviewRepository.calculateAverageRatingByProductId(
+                        existing.getProduct().getId());
+
+        Product product = existing.getProduct();
+
+        product.setRating(averageRating);
+
+        productRepository.save(product);
+
+        return reviewMapper.toDto(updatedReview);
     }
 
     @Override
@@ -107,6 +130,27 @@ public class ReviewServiceImpl implements ReviewService {
         if (!reviewRepository.existsById(id)) {
             throw new ResourceNotFoundException("Review not found with id: " + id);
         }
-        reviewRepository.deleteById(id);
+        Review review = reviewRepository.findById(id)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Review not found with id: " + id));
+
+        Long productId = review.getProduct().getId();
+
+        reviewRepository.delete(review);
+
+        Double averageRating =
+                reviewRepository.calculateAverageRatingByProductId(productId);
+
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Product not found"));
+
+        product.setRating(
+                averageRating != null ? averageRating : 0.0
+        );
+
+        productRepository.save(product);
     }
 }

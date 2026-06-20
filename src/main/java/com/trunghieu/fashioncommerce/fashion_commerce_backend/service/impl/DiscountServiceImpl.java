@@ -119,8 +119,14 @@ public class DiscountServiceImpl implements DiscountService {
             throw new IllegalArgumentException("Start date must be before end date");
         }
 
+        // Ngăn chặn cập nhật discountTarget
+        DiscountTarget newTarget = DiscountTarget.valueOf(requestDto.getDiscountTarget().toUpperCase());
+        if (existing.getDiscountTarget() != newTarget) {
+            throw new IllegalArgumentException("Discount target cannot be changed after creation.");
+        }
+
         existing.setDiscountType(DiscountType.valueOf(requestDto.getDiscountType().toUpperCase()));
-        existing.setDiscountTarget(DiscountTarget.valueOf(requestDto.getDiscountTarget().toUpperCase()));
+        // existing.setDiscountTarget(DiscountTarget.valueOf(requestDto.getDiscountTarget().toUpperCase())); // Xóa dòng này
         existing.setDiscountValue(requestDto.getDiscountValue());
         existing.setStartDate(requestDto.getStartDate());
         existing.setEndDate(requestDto.getEndDate());
@@ -195,15 +201,17 @@ public class DiscountServiceImpl implements DiscountService {
     }
 
     private BigDecimal calculateDiscountAmount(Discount discount, BigDecimal price) {
+        BigDecimal discountAmount;
         if (discount.getDiscountType() == DiscountType.PERCENT) {
             // Công thức: (Giá * %Giảm) / 100
-            // Quan trọng: Phải có RoundingMode.HALF_UP để tránh lỗi ArithmeticException và
-            // sai số
-            return price.multiply(discount.getDiscountValue())
+            discountAmount = price.multiply(discount.getDiscountValue())
                     .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+        } else { // FIXED
+            discountAmount = discount.getDiscountValue();
         }
-        // Nếu là FIXED, trả về giá trị giảm trực tiếp
-        return discount.getDiscountValue();
+
+        // Đảm bảo số tiền giảm giá không vượt quá giá gốc
+        return discountAmount.min(price);
     }
 
     private Set<Product> resolveProducts(Set<Long> productIds) {

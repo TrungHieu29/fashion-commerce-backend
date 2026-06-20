@@ -14,6 +14,7 @@ import java.math.BigDecimal;
 public class OrderItemResponseDto {
     private Long id;
     private Long productVariantId;
+    private Long productId; // Thêm trường productId
     private String productName;
     private String productImage;
     private String size;

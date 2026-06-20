@@ -17,6 +17,7 @@ public interface OrderItemMapper {
     OrderItem toEntity(OrderItemRequestDto orderItemRequestDto);
 
     @Mapping(source = "productVariant.id", target = "productVariantId")
+    @Mapping(source = "productVariant.product.id", target = "productId") // Thêm ánh xạ cho productId
     @Mapping(source = "productVariant.product.productName", target = "productName")
     @Mapping(source = "productVariant.size", target = "size")
     @Mapping(source = "productVariant.color", target = "color")

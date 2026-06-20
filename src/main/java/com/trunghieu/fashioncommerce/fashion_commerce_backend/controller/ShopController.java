@@ -73,4 +73,5 @@ public class ShopController {
         shopService.deleteShop(id);
         return ResponseEntity.noContent().build();
     }
+
 }

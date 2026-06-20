@@ -1,6 +1,7 @@
 package com.trunghieu.fashioncommerce.fashion_commerce_backend.repository;
 
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.Product;
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.enums.ProductStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -12,4 +13,8 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     Page<Product> findByShopId(Long shopId, Pageable pageable);
     Page<Product> findByBrandId(Long brandId, Pageable pageable);
     Page<Product> findByProductNameContainingIgnoreCase(String name, Pageable pageable);
+    long countByShopIdAndStatus(
+            Long shopId,
+            ProductStatus status
+    );
 }
