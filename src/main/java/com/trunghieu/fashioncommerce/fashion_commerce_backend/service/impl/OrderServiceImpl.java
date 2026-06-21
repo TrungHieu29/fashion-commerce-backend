@@ -53,134 +53,167 @@ public class OrderServiceImpl implements OrderService {
         private final ProductVariantRepository productVariantRepository; // Inject ProductVariantRepository
         private final PaymentService paymentService; // Inject PaymentService
 
-        @Override
-        @Transactional
-        public OrderResponseDto createOrder(OrderRequestDto requestDto) {
-                User user = userRepository.findById(requestDto.getUserId())
-                                .orElseThrow(() -> new ResourceNotFoundException(
-                                                "User not found with id: " + requestDto.getUserId()));
+    @Override
+    @Transactional
+    public OrderResponseDto createOrder(OrderRequestDto requestDto) {
+        User user = userRepository.findById(requestDto.getUserId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "User not found with id: " + requestDto.getUserId()));
 
-                // Lấy Cart của user
-                Cart cart = cartRepository.findByUserId(requestDto.getUserId())
-                                .orElseThrow(() -> new ResourceNotFoundException(
-                                                "Cart not found for user with id: " + requestDto.getUserId()));
+        Cart cart = cartRepository.findByUserId(requestDto.getUserId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Cart not found for user with id: " + requestDto.getUserId()));
 
-                if (cart.getCartItems().isEmpty()) {
-                        throw new IllegalArgumentException("Cart is empty, cannot create order");
-                }
-
-                // Gom nhóm CartItems theo Shop
-                Map<Long, List<CartItem>> itemsByShop = cart.getCartItems().stream()
-                                .collect(Collectors.groupingBy(
-                                                item -> item.getProductVariant().getProduct().getShop().getId()));
-
-                // 1. Xác định địa chỉ giao hàng và tạo snapshot
-                String addressSnapshot = resolveAddressSnapshot(user, requestDto);
-
-                // Tạo Order
-                Order order = Order.builder()
-                                .user(user)
-                                .addressSnapshot(addressSnapshot)
-                                .build();
-
-                // Tạo Payment dựa trên paymentMethod từ requestDto
-                Payment payment = Payment.builder()
-                        .method(requestDto.getPaymentMethod()) // Lấy phương thức thanh toán từ requestDto
-                        .status(PaymentStatus.PENDING) // Trạng thái ban đầu luôn là PENDING
-                        .order(order) // Liên kết Payment với Order
-                        .build();
-                order.setPayment(payment); // Gán Payment cho Order
-
-                Set<OrderShop> orderShops = new HashSet<>();
-                BigDecimal totalOrderPrice = BigDecimal.ZERO;
-                LocalDateTime orderCreationTime = LocalDateTime.now(); // Chụp thời điểm hiện tại một lần
-
-                // Tạo OrderShop cho mỗi shop
-                for (Map.Entry<Long, List<CartItem>> entry : itemsByShop.entrySet()) {
-                        Long shopId = entry.getKey();
-                        List<CartItem> shopCartItems = entry.getValue();
-
-                        Shop shop = shopRepository.findById(shopId)
-                                        .orElseThrow(() -> new ResourceNotFoundException(
-                                                        "Shop not found with id: " + shopId));
-
-                        OrderShop orderShop = OrderShop.builder()
-                                        .order(order)
-                                        .shop(shop)
-                                        .addressSnapshot(addressSnapshot)
-                                        .status(OrderStatus.PENDING)
-                                        .build();
-
-                        Set<OrderItem> orderItems = shopCartItems.stream().map(cartItem -> {
-                                OrderItem item = createOrderItemFromCartItem(cartItem, orderShop);
-                                // Tự động lấy giá đã giảm tốt nhất
-                                BigDecimal discount = discountService.calculateBestDiscount(shopId,
-                                                item.getProductVariant().getProduct().getId(), item.getPrice());
-                                item.setPrice(item.getPrice().subtract(discount));
-                                return item;
-                        }).collect(Collectors.toSet());
-
-                        orderShop.setOrderItems(orderItems);
-
-                        // 2. Tính Subtotal (Sau khi đã giảm giá tự động từng món)
-                        BigDecimal subtotal = orderItems.stream()
-                                        .map(item -> item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
-                                        .reduce(BigDecimal.ZERO, BigDecimal::add);
-                        orderShop.setTotalPrice(subtotal);
-
-                        // 3. Áp dụng ORDER voucher (nếu có nhập mã)
-                        BigDecimal shopFinalPrice = subtotal;
-                        if (requestDto.getVoucherCode() != null && !requestDto.getVoucherCode().isBlank()) {
-                                // Sử dụng DiscountService để áp dụng voucher với thời điểm đã chụp
-                                BigDecimal voucherDiscountAmount = discountService.applyOrderVoucher(
-                                        shopId,
-                                        requestDto.getVoucherCode(),
-                                        subtotal,
-                                        orderCreationTime // Sử dụng thời điểm đã chụp
-                                );
-                                if (voucherDiscountAmount.compareTo(BigDecimal.ZERO) > 0) {
-                                    // Lấy lại Discount entity để gán vào OrderShop nếu voucher hợp lệ
-                                    Discount appliedVoucher = discountRepository
-                                            .findByShopIdAndCodeAndStatus(shopId, requestDto.getVoucherCode(),
-                                                    com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.enums.DiscountStatus.ACTIVE)
-                                            .filter(d -> d.getDiscountTarget() == DiscountTarget.ORDER)
-                                            .filter(d -> d.getStartDate().isBefore(orderCreationTime) && d.getEndDate().isAfter(orderCreationTime)) // Sử dụng thời điểm đã chụp
-                                            .filter(d -> d.getMinOrderValue() == null || subtotal.compareTo(d.getMinOrderValue()) >= 0)
-                                            .orElse(null);
-
-                                    if (appliedVoucher != null) {
-                                        orderShop.setDiscount(appliedVoucher);
-                                        shopFinalPrice = subtotal.subtract(voucherDiscountAmount);
-                                    }
-                                }
-                        }
-                        orderShop.setFinalPrice(shopFinalPrice);
-
-                        totalOrderPrice = totalOrderPrice.add(orderShop.getFinalPrice());
-
-                        // 2. Tạo OrderShipping cho mỗi shop (Lưu snapshot địa chỉ ngay lúc này)
-                        OrderShipping shipping = OrderShipping.builder()
-                                        .orderShop(orderShop)
-                                        .addressSnapshot(addressSnapshot)
-                                        .shippingStatus(ShippingStatus.PENDING)
-                                        .build();
-                        orderShop.setShipping(shipping);
-
-                        orderShops.add(orderShop); // Sửa lỗi: Thêm orderShop vào tập hợp
-                }
-
-                order.setOrderShops(orderShops);
-                order.setTotalPrice(totalOrderPrice);
-                order.setFinalPrice(totalOrderPrice); // Chưa áp dụng discount tổng
-
-                Order savedOrder = orderRepository.save(order);
-
-                // Xóa CartItems sau khi tạo order thành công
-                cart.getCartItems().clear();
-                cartRepository.save(cart);
-
-                return orderMapper.toDto(savedOrder);
+        if (cart.getCartItems().isEmpty()) {
+            throw new IllegalArgumentException("Cart is empty, cannot create order");
         }
+
+        List<CartItem> checkoutItems = new ArrayList<>(cart.getCartItems());
+
+        if (requestDto.getCartItemIds() != null && !requestDto.getCartItemIds().isEmpty()) {
+            Set<Long> selectedIds = new HashSet<>(requestDto.getCartItemIds());
+            checkoutItems = checkoutItems.stream()
+                    .filter(item -> selectedIds.contains(item.getId()))
+                    .toList();
+        }
+
+        if (checkoutItems.isEmpty()) {
+            throw new IllegalArgumentException("No selected cart items to checkout");
+        }
+
+        Map<Long, List<CartItem>> itemsByShop = checkoutItems.stream()
+                .collect(Collectors.groupingBy(
+                        item -> item.getProductVariant().getProduct().getShop().getId()));
+
+        String addressSnapshot = resolveAddressSnapshot(user, requestDto);
+
+        Order order = Order.builder()
+                .user(user)
+                .addressSnapshot(addressSnapshot)
+                .build();
+
+        Payment payment = Payment.builder()
+                .method(requestDto.getPaymentMethod())
+                .status(PaymentStatus.PENDING)
+                .order(order)
+                .build();
+        order.setPayment(payment);
+
+        Set<OrderShop> orderShops = new HashSet<>();
+        BigDecimal totalBeforeVoucher = BigDecimal.ZERO;
+        BigDecimal totalAfterVoucher = BigDecimal.ZERO;
+        LocalDateTime orderCreationTime = LocalDateTime.now();
+
+        for (Map.Entry<Long, List<CartItem>> entry : itemsByShop.entrySet()) {
+            Long shopId = entry.getKey();
+            List<CartItem> shopCartItems = entry.getValue();
+
+            Shop shop = shopRepository.findById(shopId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Shop not found with id: " + shopId));
+
+            OrderShop orderShop = OrderShop.builder()
+                    .order(order)
+                    .shop(shop)
+                    .addressSnapshot(addressSnapshot)
+                    .status(OrderStatus.PENDING)
+                    .build();
+
+            Set<OrderItem> orderItems = shopCartItems.stream().map(cartItem -> {
+                ProductVariant variant = cartItem.getProductVariant();
+
+                if (variant.getStock() < cartItem.getQuantity()) {
+                    throw new IllegalArgumentException(
+                            "Sản phẩm " + variant.getProduct().getProductName()
+                                    + " chỉ còn " + variant.getStock() + " sản phẩm trong kho");
+                }
+
+                OrderItem item = createOrderItemFromCartItem(cartItem, orderShop);
+
+                BigDecimal discount = discountService.calculateBestDiscount(
+                        shopId,
+                        item.getProductVariant().getProduct().getId(),
+                        item.getPrice());
+
+                item.setPrice(item.getPrice().subtract(discount));
+                return item;
+            }).collect(Collectors.toSet());
+
+            orderShop.setOrderItems(orderItems);
+
+            BigDecimal subtotal = orderItems.stream()
+                    .map(item -> item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            orderShop.setTotalPrice(subtotal);
+
+            BigDecimal shopFinalPrice = subtotal;
+
+            String voucherCode = null;
+            if (requestDto.getShopVoucherCodes() != null) {
+                voucherCode = requestDto.getShopVoucherCodes().get(shopId);
+            }
+            if ((voucherCode == null || voucherCode.isBlank()) && requestDto.getVoucherCode() != null) {
+                voucherCode = requestDto.getVoucherCode();
+            }
+
+            if (voucherCode != null && !voucherCode.isBlank()) {
+                BigDecimal voucherDiscountAmount = discountService.applyOrderVoucher(
+                        shopId,
+                        voucherCode,
+                        subtotal,
+                        orderCreationTime
+                );
+
+                if (voucherDiscountAmount.compareTo(BigDecimal.ZERO) > 0) {
+                    Discount appliedVoucher = discountRepository
+                            .findByShopIdAndCodeAndStatus(
+                                    shopId,
+                                    voucherCode,
+                                    com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.enums.DiscountStatus.ACTIVE)
+                            .filter(d -> d.getDiscountTarget() == DiscountTarget.ORDER)
+                            .filter(d -> d.getStartDate().isBefore(orderCreationTime)
+                                    && d.getEndDate().isAfter(orderCreationTime))
+                            .filter(d -> d.getMinOrderValue() == null
+                                    || subtotal.compareTo(d.getMinOrderValue()) >= 0)
+                            .orElse(null);
+
+                    if (appliedVoucher != null) {
+                        orderShop.setDiscount(appliedVoucher);
+                        shopFinalPrice = subtotal.subtract(voucherDiscountAmount);
+                    }
+                }
+            }
+
+            orderShop.setFinalPrice(shopFinalPrice);
+
+            totalBeforeVoucher = totalBeforeVoucher.add(orderShop.getTotalPrice());
+            totalAfterVoucher = totalAfterVoucher.add(orderShop.getFinalPrice());
+
+            OrderShipping shipping = OrderShipping.builder()
+                    .orderShop(orderShop)
+                    .addressSnapshot(addressSnapshot)
+                    .shippingStatus(ShippingStatus.PENDING)
+                    .build();
+            orderShop.setShipping(shipping);
+
+            orderShops.add(orderShop);
+        }
+
+        order.setOrderShops(orderShops);
+        order.setTotalPrice(totalBeforeVoucher);
+        order.setFinalPrice(totalAfterVoucher);
+        payment.setAmount(totalAfterVoucher);
+
+        Order savedOrder = orderRepository.save(order);
+
+        // Chỉ xóa những CartItem đã checkout, giữ lại các sản phẩm không được tích.
+        Set<Long> checkedOutIds = checkoutItems.stream()
+                .map(CartItem::getId)
+                .collect(Collectors.toSet());
+        cart.getCartItems().removeIf(item -> checkedOutIds.contains(item.getId()));
+        cartRepository.save(cart);
+
+        return orderMapper.toDto(savedOrder);
+    }
 
         private String resolveAddressSnapshot(User user, OrderRequestDto requestDto) {
                 // Trường hợp 1: Khách chọn một địa chỉ ID cụ thể đã có sẵn

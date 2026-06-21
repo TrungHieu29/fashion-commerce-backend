@@ -5,6 +5,7 @@ import com.trunghieu.fashioncommerce.fashion_commerce_backend.security.UserDetai
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -51,13 +52,22 @@ public class SecurityConfig {
                         .permitAll()
                         .requestMatchers(
                                 "/api/products/**",
-                                "/api/product-images/**"
+                                "/api/product-images/**",
+                                "/api/product-images/product/**",
+                                "/api/product-brands/**"
                         ).permitAll()
-                        .requestMatchers("/api/roles/**").permitAll() // Tạm thời cho phép Role API để test
+                        .requestMatchers("/api/roles/**").hasRole("ADMIN") // Tạm thời cho phép Role API để test
                         .requestMatchers("/ws/**").permitAll() // Cho phép handshake WebSocket
                         .requestMatchers(
                                 "/api/products/**",
                                 "/api/product-variants/**"
+                        ).permitAll()
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/shops",
+                                "/api/shops/**",
+                                "/api/reviews/{id}",
+                                "/api/reviews/products/**",
+                                "/api/categories/**"
                         ).permitAll()
                         .anyRequest().authenticated() // Các request khác yêu cầu xác thực
                 )

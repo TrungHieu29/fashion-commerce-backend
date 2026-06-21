@@ -10,6 +10,7 @@ import com.trunghieu.fashioncommerce.fashion_commerce_backend.exception.Resource
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.repository.ConversationRepository;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.repository.MessageRepository;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.repository.UserRepository;
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.security.SecurityUtils;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.service.MessageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -27,17 +28,21 @@ public class MessageServiceImpl implements MessageService {
 
     @Override
     @Transactional
-    public MessageResponseDto sendMessage(MessageRequestDto requestDto) {
+    public MessageResponseDto sendMessage(MessageRequestDto requestDto, Long senderId) { // Thêm senderId
+        // 1. Tìm cuộc hội thoại
         Conversation conversation = conversationRepository.findById(requestDto.getConversationId())
-                .orElseThrow(() -> new ResourceNotFoundException("Conversation not found with id: " + requestDto.getConversationId()));
+                .orElseThrow(() -> new ResourceNotFoundException("Conversation not found"));
 
-        User sender = userRepository.findById(requestDto.getSenderId())
-                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + requestDto.getSenderId()));
+        // 2. Tìm User từ ID được truyền vào (thay vì SecurityUtils)
+        User sender = userRepository.findById(senderId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
+        // 3. Kiểm tra quyền
         if (!isValidSender(conversation, sender)) {
-            throw new IllegalArgumentException("Sender must be either the conversation customer or the shop owner");
+            throw new IllegalArgumentException("You are not a participant in this conversation");
         }
 
+        // 4. Lưu tin nhắn
         Message message = Message.builder()
                 .conversation(conversation)
                 .sender(sender)
@@ -45,8 +50,7 @@ public class MessageServiceImpl implements MessageService {
                 .isRead(false)
                 .build();
 
-        Message saved = messageRepository.save(message);
-        return toDto(saved);
+        return toDto(messageRepository.save(message));
     }
 
     @Override

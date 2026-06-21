@@ -90,31 +90,33 @@ public class PaymentServiceImpl implements PaymentService {
             throw new IllegalArgumentException("Cannot process online payment result for COD payment method.");
         }
 
+        if (payment.getStatus() == PaymentStatus.COMPLETED || payment.getStatus() == PaymentStatus.FAILED) {
+            return paymentMapper.toDto(payment);
+        }
+
         payment.setStatus(resultStatus);
         Payment savedPayment = paymentRepository.save(payment);
 
         Order order = savedPayment.getOrder();
+
         if (resultStatus == PaymentStatus.COMPLETED) {
-            // Nếu thanh toán online thành công, chuyển tất cả OrderShop sang CONFIRMED
-            // Việc trừ kho sẽ được kích hoạt khi OrderShopService.confirmOrder được gọi
             order.getOrderShops().forEach(orderShop -> {
                 if (orderShop.getStatus() == OrderStatus.PENDING) {
                     orderShop.setStatus(OrderStatus.CONFIRMED);
-                    // Không gọi orderService.deductStock(orderShop) trực tiếp từ đây
                 }
             });
         } else if (resultStatus == PaymentStatus.FAILED) {
-            // Nếu thanh toán online thất bại, hủy tất cả OrderShop
             order.getOrderShops().forEach(orderShop -> {
-                orderShop.setStatus(OrderStatus.CANCELLED);
+                if (orderShop.getStatus() == OrderStatus.PENDING || orderShop.getStatus() == OrderStatus.CONFIRMED) {
+                    orderShop.setStatus(OrderStatus.CANCELLED);
+                }
                 if (orderShop.getShipping() != null) {
                     orderShop.getShipping().setShippingStatus(ShippingStatus.CANCELLED);
                 }
-                // Không hoàn kho vì chưa trừ kho
             });
         }
-        orderRepository.save(order); // Lưu Order để cập nhật OrderShops
 
+        orderRepository.save(order);
         return paymentMapper.toDto(savedPayment);
     }
 }

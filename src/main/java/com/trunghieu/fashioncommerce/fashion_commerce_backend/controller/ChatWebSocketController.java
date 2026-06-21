@@ -21,17 +21,16 @@ public class ChatWebSocketController {
 
     private final MessageService messageService;
     private final SimpMessagingTemplate messagingTemplate;
-
     @MessageMapping("/chat.sendMessage")
     public void sendMessage(MessageRequestDto messageRequestDto, Principal principal) {
         Long senderId = extractUserId(principal);
-        messageRequestDto.setSenderId(senderId);
 
-        MessageResponseDto savedMessage = messageService.sendMessage(messageRequestDto);
+        // Gọi service với 2 tham số
+        MessageResponseDto savedMessage = messageService.sendMessage(messageRequestDto, senderId);
+
         String destination = "/topic/conversations/" + savedMessage.getConversationId();
         messagingTemplate.convertAndSend(destination, savedMessage);
     }
-
     @MessageMapping("/chat.typing")
     public void typing(TypingIndicatorDto typingIndicatorDto, Principal principal) {
         typingIndicatorDto.setSenderId(extractUserId(principal));

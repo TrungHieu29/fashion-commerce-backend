@@ -261,4 +261,12 @@ public class SecurityUtils {
                         && payment.getOrder().getUser().getId().equals(currentUserId))
                 .orElse(false);
     }
+    public static Long getCurrentUserId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()
+                || !(authentication.getPrincipal() instanceof CustomUserDetails)) {
+            throw new IllegalStateException("User is not authenticated");
+        }
+        return ((CustomUserDetails) authentication.getPrincipal()).getId();
+    }
 }

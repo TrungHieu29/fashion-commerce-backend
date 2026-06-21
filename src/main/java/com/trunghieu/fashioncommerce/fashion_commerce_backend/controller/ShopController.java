@@ -37,14 +37,12 @@ public class ShopController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'CUSTOMER')") // ADMIN và CUSTOMER đều có thể xem shop theo ID
     public ResponseEntity<ShopResponseDto> getShopById(@PathVariable Long id) {
         ShopResponseDto shop = shopService.getShopById(id);
         return ResponseEntity.ok(shop);
     }
 
     @GetMapping("/owner/{ownerId}")
-    @PreAuthorize("hasRole('ADMIN') or #ownerId == authentication.principal.id")
     // ADMIN có thể xem shop của bất kỳ ai. CUSTOMER chỉ có thể xem shop của chính mình.
     public ResponseEntity<ShopResponseDto> getShopByOwnerId(@PathVariable Long ownerId, Authentication authentication) {
         ShopResponseDto shop = shopService.getShopByOwnerId(ownerId);
@@ -52,7 +50,6 @@ public class ShopController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'CUSTOMER')") // ADMIN và CUSTOMER đều có thể xem tất cả shops
     public ResponseEntity<List<ShopResponseDto>> getAllShops() {
         List<ShopResponseDto> shops = shopService.getAllShops();
         return ResponseEntity.ok(shops);

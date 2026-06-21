@@ -48,8 +48,8 @@ public class ConversationController {
         return ResponseEntity.ok(conversationService.getConversationsByShopId(shopId, pageable));
     }
 
-    @GetMapping
-    @PreAuthorize("hasRole('ADMIN') or #userId == authentication.principal.id or @securityUtils.isShopOwner(#shopId)")
+    @GetMapping("/get-or-create")
+    @PreAuthorize("hasRole('ADMIN') or #userId == principal.id or @securityUtils.isShopOwner(#shopId)")
     public ResponseEntity<ConversationResponseDto> getOrCreateConversation(
             @RequestParam Long userId,
             @RequestParam Long shopId) {

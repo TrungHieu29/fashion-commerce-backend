@@ -12,4 +12,5 @@ public interface UserService {
     List<UserResponseDto> getAllUsers();
     UserResponseDto updateUser(Long id, UserUpdateRequestDto requestDto);
     void deleteUser(Long id);
+    boolean verifyOtp(String email, String otp);
 }

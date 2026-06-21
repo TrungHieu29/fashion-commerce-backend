@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 
 @Data
 @NoArgsConstructor
@@ -19,7 +20,10 @@ public class OrderRequestDto {
     @NotNull(message = "User ID cannot be null")
     private Long userId;
 
+    private List<Long> cartItemIds;
+
     private String voucherCode; // User enters code at checkout
+    private Map<Long, String> shopVoucherCodes;
 
     @NotNull(message = "Payment method cannot be null") // Thêm validation
     private PaymentMethod paymentMethod; // Thêm trường paymentMethod

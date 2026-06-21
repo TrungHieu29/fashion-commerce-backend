@@ -26,13 +26,11 @@ public class ReviewController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','CUSTOMER')")
     public ResponseEntity<ReviewResponseDto> getReviewById(@PathVariable Long id) {
         return ResponseEntity.ok(reviewService.getReviewById(id));
     }
 
     @GetMapping("/products/{productId}")
-    @PreAuthorize("hasAnyRole('ADMIN','CUSTOMER')")
     public ResponseEntity<Page<ReviewResponseDto>> getReviewsByProductId(
             @PathVariable Long productId,
             Pageable pageable) {

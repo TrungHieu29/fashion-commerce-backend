@@ -21,7 +21,7 @@ public class Payment {
     private Long id;
 
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "order_id")
+    @JoinColumn(name = "order_id", nullable = false, unique = true)
     @ToString.Exclude
     private Order order;
 

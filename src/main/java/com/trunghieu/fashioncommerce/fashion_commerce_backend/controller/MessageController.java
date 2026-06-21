@@ -2,6 +2,7 @@ package com.trunghieu.fashioncommerce.fashion_commerce_backend.controller;
 
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.request.MessageRequestDto;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.response.MessageResponseDto;
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.security.SecurityUtils;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.service.MessageService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -20,9 +21,11 @@ public class MessageController {
     private final MessageService messageService;
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN') or #requestDto.senderId == authentication.principal.id")
+    @PreAuthorize("@securityUtils.isConversationParticipant(#requestDto.conversationId)")
     public ResponseEntity<MessageResponseDto> sendMessage(@Valid @RequestBody MessageRequestDto requestDto) {
-        return new ResponseEntity<>(messageService.sendMessage(requestDto), HttpStatus.CREATED);
+        // Lấy ID từ token ngay tại Controller rồi truyền vào service
+        Long senderId = SecurityUtils.getCurrentUserId();
+        return new ResponseEntity<>(messageService.sendMessage(requestDto, senderId), HttpStatus.CREATED);
     }
 
     @GetMapping("/conversations/{conversationId}")

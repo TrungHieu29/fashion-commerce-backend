@@ -14,8 +14,10 @@ import lombok.NoArgsConstructor;
 public class MessageRequestDto {
     @NotNull(message = "Conversation ID is required")
     private Long conversationId;
-    @NotNull(message = "Sender ID is required")
-    private Long senderId; // ID của người gửi (User hoặc Shop)
+
+    // Bỏ qua senderId ở đây vì đã lấy từ Token
+    private Long senderId;
+
     @NotBlank(message = "Message content cannot be blank")
     private String content;
 }

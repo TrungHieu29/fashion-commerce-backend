@@ -27,14 +27,12 @@ public class CategoryController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','CUSTOMER')")
     public ResponseEntity<CategoryResponseDto> getCategoryById(@PathVariable Long id) {
         CategoryResponseDto category = categoryService.getCategoryById(id);
         return ResponseEntity.ok(category);
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','CUSTOMER')")
     public ResponseEntity<List<CategoryResponseDto>> getAllCategories() {
         List<CategoryResponseDto> categories = categoryService.getAllCategories();
         return ResponseEntity.ok(categories);

@@ -13,10 +13,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -33,7 +30,16 @@ public class AuthController {
         UserResponseDto registeredUser = userService.createUser(request);
         return new ResponseEntity<>(registeredUser, HttpStatus.CREATED);
     }
-
+    @PostMapping("/verify")
+    public ResponseEntity<String> verifyAccount(@RequestParam String email, @RequestParam String otp) {
+        boolean isVerified = userService.verifyOtp(email, otp);
+        if (isVerified) {
+            return ResponseEntity.ok("Tài khoản của bạn đã được kích hoạt thành công!");
+        } else {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("Mã xác thực không hợp lệ hoặc đã hết hạn.");
+        }
+    }
     @PostMapping("/authenticate")
     public ResponseEntity<AuthResponse> authenticate(@RequestBody UserRequestDto request) {
         authenticationManager.authenticate(

@@ -8,7 +8,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 public interface MessageService {
-    MessageResponseDto sendMessage(MessageRequestDto requestDto);
+    MessageResponseDto sendMessage(MessageRequestDto requestDto, Long senderId);
     Page<MessageResponseDto> getMessagesByConversationId(Long conversationId, Pageable pageable);
     void markConversationMessagesAsRead(Long conversationId);
     MessageReadResponseDto markConversationMessagesAsRead(Long conversationId, Long readerId);
