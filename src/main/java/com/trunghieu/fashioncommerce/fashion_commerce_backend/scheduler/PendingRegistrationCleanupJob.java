@@ -1,5 +1,6 @@
 package com.trunghieu.fashioncommerce.fashion_commerce_backend.scheduler;
 
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.repository.PasswordResetTokenRepository;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.repository.PendingRegistrationRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -13,6 +14,7 @@ import java.time.LocalDateTime;
 public class PendingRegistrationCleanupJob {
 
     private final PendingRegistrationRepository pendingRepository;
+    private final PasswordResetTokenRepository passwordResetTokenRepository;
 
     @Scheduled(cron = "0 */10 * * * *")
     @Transactional
@@ -21,9 +23,13 @@ public class PendingRegistrationCleanupJob {
         pendingRepository.deleteByExpiryDateBefore(
                 LocalDateTime.now()
         );
-
+        passwordResetTokenRepository
+                .deleteByExpiryDateBefore(
+                        LocalDateTime.now()
+                );
         System.out.println(
                 "[Scheduler] Cleaned expired pending registrations"
         );
+
     }
 }

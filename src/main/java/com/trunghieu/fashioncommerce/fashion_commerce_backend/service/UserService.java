@@ -1,5 +1,7 @@
 package com.trunghieu.fashioncommerce.fashion_commerce_backend.service;
 
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.request.ChangePasswordRequest;
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.request.ResetPasswordRequest;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.request.UserRequestDto;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.request.UserUpdateRequestDto;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.response.UserResponseDto;
@@ -17,4 +19,13 @@ public interface UserService {
     boolean verifyOtp(String email, String otp);
     UserResponseDto updateUserStatus(Long id, UserStatus status);
     void resendOtp(String email);
+    void changePassword(
+            String username,
+            ChangePasswordRequest request
+    );
+    void forgotPassword(String email);
+
+    void resetPassword(ResetPasswordRequest request);
+
+    void resendResetOtp(String email);
 }

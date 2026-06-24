@@ -1,5 +1,6 @@
 package com.trunghieu.fashioncommerce.fashion_commerce_backend.controller;
 
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.request.ChangePasswordRequest;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.request.UserRequestDto;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.request.UserStatusRequestDto;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.request.UserUpdateRequestDto;
@@ -11,6 +12,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize; // Import PreAuthorize
 import org.springframework.security.core.Authentication; // Import Authentication
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -68,6 +72,22 @@ public class UserController {
                         id,
                         requestDto.getStatus()
                 )
+        );
+    }
+
+    @PutMapping("/change-password")
+    public ResponseEntity<String> changePassword(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestBody ChangePasswordRequest request
+    ) {
+
+        userService.changePassword(
+                userDetails.getUsername(),
+                request
+        );
+
+        return ResponseEntity.ok(
+                "Đổi mật khẩu thành công"
         );
     }
 }

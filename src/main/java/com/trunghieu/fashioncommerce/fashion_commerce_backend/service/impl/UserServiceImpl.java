@@ -1,14 +1,18 @@
 package com.trunghieu.fashioncommerce.fashion_commerce_backend.service.impl;
 
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.request.ChangePasswordRequest;
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.request.ResetPasswordRequest;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.request.UserRequestDto;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.request.UserUpdateRequestDto;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.response.UserResponseDto;
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.PasswordResetToken;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.PendingRegistration;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.User;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.enums.RoleName;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.enums.UserStatus;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.exception.ResourceNotFoundException;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.mapper.UserMapper;
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.repository.PasswordResetTokenRepository;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.repository.PendingRegistrationRepository;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.repository.UserRepository;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.service.EmailService;
@@ -33,6 +37,7 @@ public class UserServiceImpl implements UserService {
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
     private final PendingRegistrationRepository pendingRepository;
+    private final PasswordResetTokenRepository passwordResetTokenRepository;
 
     @Override
     @Transactional
@@ -239,5 +244,197 @@ public class UserServiceImpl implements UserService {
                 email,
                 otp
         );
+    }
+
+    @Override
+    @Transactional
+    public void changePassword(
+            String username,
+            ChangePasswordRequest request
+    ) {
+
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "User not found"));
+
+        if (!passwordEncoder.matches(
+                request.getCurrentPassword(),
+                user.getPasswordHash()
+        )) {
+            throw new IllegalArgumentException(
+                    "Mật khẩu hiện tại không đúng");
+        }
+
+        if (!request.getNewPassword()
+                .equals(request.getConfirmPassword())) {
+
+            throw new IllegalArgumentException(
+                    "Xác nhận mật khẩu không khớp");
+        }
+
+        user.setPasswordHash(
+                passwordEncoder.encode(
+                        request.getNewPassword()
+                )
+        );
+
+        userRepository.save(user);
+    }
+    @Override
+    @Transactional
+    public void forgotPassword(String email) {
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Email không tồn tại"));
+
+        passwordResetTokenRepository.findByEmail(email)
+                .ifPresent(passwordResetTokenRepository::delete);
+
+        String otp = String.format(
+                "%06d",
+                new java.util.Random()
+                        .nextInt(1000000)
+        );
+
+        PasswordResetToken token =
+                PasswordResetToken.builder()
+                        .email(email)
+                        .otpCode(otp)
+                        .expiryDate(
+                                LocalDateTime.now()
+                                        .plusMinutes(5)
+                        )
+                        .lastOtpSentAt(
+                                LocalDateTime.now()
+                        )
+                        .failedAttempts(0)
+                        .build();
+
+        passwordResetTokenRepository.save(token);
+
+        emailService.sendOtpEmail(
+                email,
+                otp
+        );
+    }
+    @Override
+    @Transactional
+    public void resendResetOtp(String email) {
+
+        PasswordResetToken token =
+                passwordResetTokenRepository
+                        .findByEmail(email)
+                        .orElseThrow(() ->
+                                new ResourceNotFoundException(
+                                        "Không tìm thấy yêu cầu reset mật khẩu"));
+
+        if (token.getLastOtpSentAt() != null
+                && token.getLastOtpSentAt()
+                .plusSeconds(60)
+                .isAfter(LocalDateTime.now())) {
+
+            throw new IllegalArgumentException(
+                    "Vui lòng đợi 60 giây trước khi gửi lại OTP");
+        }
+
+        String otp = String.format(
+                "%06d",
+                new java.util.Random()
+                        .nextInt(1000000)
+        );
+
+        token.setOtpCode(otp);
+
+        token.setExpiryDate(
+                LocalDateTime.now()
+                        .plusMinutes(5)
+        );
+
+        token.setLastOtpSentAt(
+                LocalDateTime.now()
+        );
+
+        token.setFailedAttempts(0);
+
+        passwordResetTokenRepository.save(token);
+
+        emailService.sendOtpEmail(
+                email,
+                otp
+        );
+    }
+    @Override
+    @Transactional
+    public void resetPassword(
+            ResetPasswordRequest request
+    ) {
+
+        PasswordResetToken token =
+                passwordResetTokenRepository
+                        .findByEmail(request.getEmail())
+                        .orElseThrow(() ->
+                                new ResourceNotFoundException(
+                                        "Không tìm thấy OTP"));
+
+        if (token.getExpiryDate()
+                .isBefore(LocalDateTime.now())) {
+
+            passwordResetTokenRepository
+                    .delete(token);
+
+            throw new IllegalArgumentException(
+                    "OTP đã hết hạn");
+        }
+
+        if (token.getFailedAttempts() >= 5) {
+
+            passwordResetTokenRepository
+                    .delete(token);
+
+            throw new IllegalArgumentException(
+                    "OTP đã bị khóa");
+        }
+
+        if (!token.getOtpCode()
+                .equals(request.getOtp())) {
+
+            token.setFailedAttempts(
+                    token.getFailedAttempts() + 1
+            );
+
+            passwordResetTokenRepository
+                    .save(token);
+
+            throw new IllegalArgumentException(
+                    "OTP không chính xác");
+        }
+
+        if (!request.getNewPassword()
+                .equals(request.getConfirmPassword())) {
+
+            throw new IllegalArgumentException(
+                    "Xác nhận mật khẩu không khớp");
+        }
+
+        User user =
+                userRepository.findByEmail(
+                        request.getEmail()
+                ).orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "User not found"));
+
+        user.setPasswordHash(
+                passwordEncoder.encode(
+                        request.getNewPassword()
+                )
+        );
+
+        userRepository.save(user);
+
+        passwordResetTokenRepository
+                .delete(token);
     }
 }

@@ -1,7 +1,6 @@
 package com.trunghieu.fashioncommerce.fashion_commerce_backend.controller;
 
-import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.request.ResendOtpRequest;
-import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.request.UserRequestDto;
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.request.*;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.response.AuthResponse;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.response.UserResponseDto;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.security.JwtService;
@@ -74,5 +73,42 @@ public class AuthController {
 
         return ResponseEntity.ok(
                 "Mã OTP mới đã được gửi");
+    }
+    @PostMapping("/forgot-password")
+    public ResponseEntity<String> forgotPassword(
+            @RequestBody ForgotPasswordRequest request
+    ) {
+
+        userService.forgotPassword(
+                request.getEmail()
+        );
+
+        return ResponseEntity.ok(
+                "OTP đã được gửi"
+        );
+    }
+    @PostMapping("/reset-password")
+    public ResponseEntity<String> resetPassword(
+            @RequestBody ResetPasswordRequest request
+    ) {
+
+        userService.resetPassword(request);
+
+        return ResponseEntity.ok(
+                "Đặt lại mật khẩu thành công"
+        );
+    }
+    @PostMapping("/resend-reset-otp")
+    public ResponseEntity<String> resendResetOtp(
+            @RequestBody ResendResetOtpRequest request
+    ) {
+
+        userService.resendResetOtp(
+                request.getEmail()
+        );
+
+        return ResponseEntity.ok(
+                "OTP mới đã được gửi"
+        );
     }
 }
