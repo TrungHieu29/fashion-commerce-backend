@@ -3,6 +3,7 @@ package com.trunghieu.fashioncommerce.fashion_commerce_backend.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime; // Import LocalDateTime
+import java.util.HashSet;
 import java.util.Set;
 
 @Entity
@@ -18,7 +19,7 @@ public class Category {
     @Column(name = "category_id")
     private Long id;
 
-    @Column(name = "name", nullable = false, unique = true) // Added @Column and constraints
+    @Column(name = "name", nullable = false, unique = true, columnDefinition = "NVARCHAR(255)") // Added @Column and constraints
     private String name;
 
     @Column(name = "created_at") // Added createdAt
@@ -26,6 +27,10 @@ public class Category {
 
     @Column(name = "updated_at") // Added updatedAt
     private LocalDateTime updatedAt;
+
+    @Builder.Default
+    @ManyToMany(mappedBy = "categories")
+    private Set<Product> products = new HashSet<>();
 
     @PrePersist
     protected void onCreate() {

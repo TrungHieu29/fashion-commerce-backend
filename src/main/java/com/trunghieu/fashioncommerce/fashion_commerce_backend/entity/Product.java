@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime; // Import LocalDateTime
+import java.util.HashSet;
 import java.util.Set;
 
 @Entity
@@ -20,10 +21,10 @@ public class Product {
     @Column(name = "product_id")
     private Long id;
 
-    @Column(name = "product_name", nullable = false)
+    @Column(name = "product_name", nullable = false, columnDefinition = "NVARCHAR(MAX)")
     private String productName;
 
-    @Column(name = "product_detail", columnDefinition = "TEXT")
+    @Column(name = "product_detail", columnDefinition = "NVARCHAR(255)")
     private String productDetail;
 
     @Column(name = "rating") // Added @Column
@@ -46,10 +47,14 @@ public class Product {
     @ToString.Exclude
     private ProductBrand brand;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "category_id")
-    @ToString.Exclude
-    private Category category;
+    @Builder.Default
+    @ManyToMany
+    @JoinTable(
+            name = "product_category",
+            joinColumns = @JoinColumn(name = "product_id"),
+            inverseJoinColumns = @JoinColumn(name = "category_id")
+    )
+    private Set<Category> categories = new HashSet<>();
 
     // Các quan hệ composition (thành phần của product) thì nên giữ OneToMany để Cascade
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)

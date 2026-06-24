@@ -27,7 +27,7 @@ public class Message {
     @ToString.Exclude
     private User sender;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(columnDefinition = "NVARCHAR(255)")
     private String content;
 
     @Column(name = "is_read") // Added @Column

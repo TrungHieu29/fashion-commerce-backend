@@ -19,11 +19,13 @@ public class Shop {
     @Column(name = "shop_id")
     private Long id;
 
-    @Column(name = "shop_name", nullable = false)
+    @Column(name = "shop_name", nullable = false, columnDefinition = "NVARCHAR(255)")
     private String shopName;
 
     @Column(name = "logo") // Added @Column
     private String logo;
+    @Column(name = "logo_public_id")
+    private String logoPublicId;
 
     @Column(name = "phone") // Added @Column
     private String phone;
@@ -32,7 +34,7 @@ public class Shop {
     @Column(name = "status") // Added @Column
     private ShopStatus status; // Change type to ShopStatus
 
-    @Column(name = "address") // Added @Column
+    @Column(name = "address", columnDefinition = "NVARCHAR(255)") // Added @Column
     private String address;
 
     @Column(name = "email") // Added @Column

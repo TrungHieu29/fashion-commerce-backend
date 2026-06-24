@@ -1,17 +1,21 @@
 package com.trunghieu.fashioncommerce.fashion_commerce_backend.controller;
 
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.request.ShopRequestDto;
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.request.ShopStatusRequestDto;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.response.ShopResponseDto;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.security.CustomUserDetails;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.service.ShopService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 
 @RestController
@@ -21,18 +25,13 @@ public class ShopController {
 
     private final ShopService shopService;
 
-    @PostMapping
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasRole('ADMIN') or (hasRole('CUSTOMER') and #requestDto.ownerId == authentication.principal.id)")
-    // ADMIN có thể tạo shop cho bất kỳ ai. CUSTOMER chỉ có thể tạo shop cho chính mình.
-    public ResponseEntity<ShopResponseDto> createShop(@Valid @RequestBody ShopRequestDto requestDto, Authentication authentication) {
-        // Nếu là CUSTOMER, đảm bảo ownerId trong request khớp với ID của người dùng đang đăng nhập
-        if (authentication.getPrincipal() instanceof CustomUserDetails && authentication.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_CUSTOMER"))) {
-            CustomUserDetails currentUser = (CustomUserDetails) authentication.getPrincipal();
-            if (!currentUser.getId().equals(requestDto.getOwnerId())) {
-                return new ResponseEntity<>(HttpStatus.FORBIDDEN); // Hoặc ném AccessDeniedException
-            }
-        }
-        ShopResponseDto createdShop = shopService.createShop(requestDto);
+    public ResponseEntity<ShopResponseDto> createShop(
+            @Valid @RequestPart("shop") ShopRequestDto requestDto,
+            @RequestPart(value = "logo", required = false) MultipartFile logo) throws IOException {
+
+        ShopResponseDto createdShop = shopService.createShop(requestDto, logo);
         return new ResponseEntity<>(createdShop, HttpStatus.CREATED);
     }
 
@@ -64,11 +63,21 @@ public class ShopController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN') or @securityUtils.isShopOwner(#id)")
+    @PreAuthorize("hasRole('ADMIN')")
     // ADMIN có thể xóa bất kỳ shop nào. Chủ shop chỉ có thể xóa shop của mình.
     public ResponseEntity<Void> deleteShop(@PathVariable Long id) {
         shopService.deleteShop(id);
         return ResponseEntity.noContent().build();
     }
+    @PatchMapping("/{id}/status")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ShopResponseDto> updateShopStatus(
+            @PathVariable Long id,
+            @RequestBody ShopStatusRequestDto requestDto) {
 
+        ShopResponseDto response =
+                shopService.updateShopStatus(id, requestDto.getStatus());
+
+        return ResponseEntity.ok(response);
+    }
 }

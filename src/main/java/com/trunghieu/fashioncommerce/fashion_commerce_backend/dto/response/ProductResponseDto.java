@@ -26,8 +26,7 @@ public class ProductResponseDto {
     private String shopName; // Thêm tên shop để hiển thị
     private Long brandId;
     private String brandName; // Thêm tên brand
-    private Long categoryId;
-    private String categoryName; // Thêm tên category
+    private Set<CategoryResponseDto> categories;// Thêm tên category
     // Có thể thêm List<ProductImageResponseDto> images; và
     // List<ProductVariantResponseDto> variants; sau
 }

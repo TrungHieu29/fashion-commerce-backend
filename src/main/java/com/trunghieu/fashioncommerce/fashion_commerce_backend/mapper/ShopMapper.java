@@ -10,7 +10,7 @@ import org.mapstruct.Mapping;
 @Mapper(componentModel = "spring", imports = ShopStatus.class) // Đã thêm imports = ShopStatus.class
 public interface ShopMapper {
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "status", expression = "java(ShopStatus.ACTIVE)")
+    @Mapping(target = "status", expression = "java(ShopStatus.PENDING)")
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "owner", ignore = true)
     @Mapping(target = "orderShops", ignore = true)

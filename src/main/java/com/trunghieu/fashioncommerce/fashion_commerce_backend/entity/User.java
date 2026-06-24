@@ -29,7 +29,7 @@ public class User {
     @Column(name = "password_hash", nullable = false) // Added @Column
     private String passwordHash;
 
-    @Column(name = "full_name") // Added @Column
+    @Column(name = "full_name", columnDefinition = "NVARCHAR(255)") // Added @Column
     private String fullName;
 
     @Column(name = "phone") // Added @Column

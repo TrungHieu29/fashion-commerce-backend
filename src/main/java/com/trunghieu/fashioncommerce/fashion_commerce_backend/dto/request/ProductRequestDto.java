@@ -2,6 +2,7 @@ package com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.request;
 
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.enums.ProductStatus;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.DecimalMin;
 import lombok.AllArgsConstructor;
@@ -10,6 +11,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.util.Set;
 
 @Data
 @NoArgsConstructor
@@ -34,6 +36,6 @@ public class ProductRequestDto {
     @NotNull(message = "Brand ID cannot be null")
     private Long brandId;
 
-    @NotNull(message = "Category ID cannot be null")
-    private Long categoryId;
+    @NotEmpty(message = "At least one category must be selected")
+    private Set<Long> categoryIds;
 }

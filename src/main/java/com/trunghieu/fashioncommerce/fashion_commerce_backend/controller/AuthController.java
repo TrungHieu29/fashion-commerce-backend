@@ -1,5 +1,6 @@
 package com.trunghieu.fashioncommerce.fashion_commerce_backend.controller;
 
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.request.ResendOtpRequest;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.request.UserRequestDto;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.response.AuthResponse;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.response.UserResponseDto;
@@ -26,10 +27,17 @@ public class AuthController {
     private final UserDetailsService userDetailsService; // Sử dụng UserDetailsService để tải UserDetails
 
     @PostMapping("/register")
-    public ResponseEntity<UserResponseDto> register(@Valid @RequestBody UserRequestDto request) {
-        UserResponseDto registeredUser = userService.createUser(request);
-        return new ResponseEntity<>(registeredUser, HttpStatus.CREATED);
+    public ResponseEntity<String> register(
+            @Valid @RequestBody UserRequestDto request) {
+
+        String message =
+                userService.createUser(request);
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(message);
     }
+
     @PostMapping("/verify")
     public ResponseEntity<String> verifyAccount(@RequestParam String email, @RequestParam String otp) {
         boolean isVerified = userService.verifyOtp(email, otp);
@@ -57,5 +65,14 @@ public class AuthController {
                 .refreshToken(refreshToken)
                 .user(userResponseDto)
                 .build());
+    }
+    @PostMapping("/resend-otp")
+    public ResponseEntity<String> resendOtp(
+            @RequestBody ResendOtpRequest request) {
+
+        userService.resendOtp(request.getEmail());
+
+        return ResponseEntity.ok(
+                "Mã OTP mới đã được gửi");
     }
 }

@@ -8,6 +8,7 @@ import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.ProductBran
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.Shop;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.exception.ResourceNotFoundException;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.mapper.ProductMapper;
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.repository.CategoryRepository;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.repository.ProductRepository;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.service.CategoryService;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.service.DiscountService;
@@ -19,7 +20,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
+import java.util.Set;
+import java.util.stream.Collectors;
 import java.math.BigDecimal;
 
 @Service
@@ -32,33 +34,36 @@ public class ProductServiceImpl implements ProductService {
     private final CategoryService categoryService; // Để kiểm tra category tồn tại
     private final ProductBrandService productBrandService; // Để kiểm tra brand tồn tại
     private final DiscountService discountService;
+    private final CategoryRepository categoryRepository;
 
     @Override
     @Transactional
     public ProductResponseDto createProduct(ProductRequestDto requestDto) {
-        // Kiểm tra sự tồn tại của Shop, Category, Brand
-        shopService.getShopById(requestDto.getShopId()); // Sẽ ném ResourceNotFoundException nếu không tìm thấy
-        categoryService.getCategoryById(requestDto.getCategoryId()); // Sẽ ném ResourceNotFoundException nếu không tìm
-                                                                     // thấy
-        productBrandService.getProductBrandById(requestDto.getBrandId()); // Sẽ ném ResourceNotFoundException nếu không
-                                                                          // tìm thấy
+
+        shopService.getShopById(requestDto.getShopId());
+        productBrandService.getProductBrandById(requestDto.getBrandId());
+
+        Set<Category> categories = requestDto.getCategoryIds()
+                .stream()
+                .map(id -> categoryRepository.findById(id)
+                        .orElseThrow(() -> new ResourceNotFoundException(
+                                "Category not found with id: " + id)))
+                .collect(Collectors.toSet());
 
         Product product = productMapper.toEntity(requestDto);
 
-        // Gán các đối tượng Entity liên quan
-        Shop shop = new Shop(); // Tạo đối tượng Shop tạm thời để set ID
+        Shop shop = new Shop();
         shop.setId(requestDto.getShopId());
         product.setShop(shop);
 
-        Category category = new Category(); // Tạo đối tượng Category tạm thời để set ID
-        category.setId(requestDto.getCategoryId());
-        product.setCategory(category);
-
-        ProductBrand brand = new ProductBrand(); // Tạo đối tượng ProductBrand tạm thời để set ID
+        ProductBrand brand = new ProductBrand();
         brand.setId(requestDto.getBrandId());
         product.setBrand(brand);
 
+        product.setCategories(categories);
+
         product = productRepository.save(product);
+
         return enrichProductDto(product);
     }
 
@@ -73,7 +78,8 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Transactional(readOnly = true)
     public Page<ProductResponseDto> getAllProducts(Pageable pageable) {
-        return productRepository.findAll(pageable).map(this::enrichProductDto);
+        return productRepository.findAllActive(pageable)
+                .map(this::enrichProductDto);
     }
 
     @Override
@@ -118,40 +124,43 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Transactional
     public ProductResponseDto updateProduct(Long id, ProductRequestDto requestDto) {
-        Product existingProduct = productRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + id));
 
-        // Kiểm tra sự tồn tại của Shop, Category, Brand nếu chúng được thay đổi
+        Product existingProduct = productRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Product not found with id: " + id));
+
         if (!existingProduct.getShop().getId().equals(requestDto.getShopId())) {
             shopService.getShopById(requestDto.getShopId());
         }
-        if (!existingProduct.getCategory().getId().equals(requestDto.getCategoryId())) {
-            categoryService.getCategoryById(requestDto.getCategoryId());
-        }
+
         if (!existingProduct.getBrand().getId().equals(requestDto.getBrandId())) {
             productBrandService.getProductBrandById(requestDto.getBrandId());
         }
 
-        // Cập nhật các trường
+        Set<Category> categories = requestDto.getCategoryIds()
+                .stream()
+                .map(categoryId -> categoryRepository.findById(categoryId)
+                        .orElseThrow(() -> new ResourceNotFoundException(
+                                "Category not found with id: " + categoryId)))
+                .collect(Collectors.toSet());
+
         existingProduct.setProductName(requestDto.getProductName());
         existingProduct.setProductDetail(requestDto.getProductDetail());
         existingProduct.setStatus(requestDto.getStatus());
         existingProduct.setPrice(requestDto.getPrice());
 
-        // Cập nhật các mối quan hệ
         Shop shop = new Shop();
         shop.setId(requestDto.getShopId());
         existingProduct.setShop(shop);
-
-        Category category = new Category();
-        category.setId(requestDto.getCategoryId());
-        existingProduct.setCategory(category);
 
         ProductBrand brand = new ProductBrand();
         brand.setId(requestDto.getBrandId());
         existingProduct.setBrand(brand);
 
+        existingProduct.setCategories(categories);
+
         existingProduct = productRepository.save(existingProduct);
+
         return enrichProductDto(existingProduct);
     }
 

@@ -1,19 +1,25 @@
 package com.trunghieu.fashioncommerce.fashion_commerce_backend.service.impl;
 
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.request.ShopRequestDto;
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.request.ShopStatusRequestDto;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.response.ShopResponseDto;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.Shop;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.User;
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.enums.ShopStatus;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.exception.ResourceNotFoundException;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.mapper.ShopMapper;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.repository.ShopRepository;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.repository.UserRepository;
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.service.CloudinaryService;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.service.ShopService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -23,27 +29,35 @@ public class ShopServiceImpl implements ShopService {
     private final ShopRepository shopRepository;
     private final ShopMapper shopMapper;
     private final UserRepository userRepository; // Cần để gán owner
+    private final CloudinaryService cloudinaryService;
 
     @Override
     @Transactional
-    public ShopResponseDto createShop(ShopRequestDto requestDto) {
-        // Kiểm tra xem shopName đã tồn tại chưa
+    public ShopResponseDto createShop(ShopRequestDto requestDto, MultipartFile logo) throws IOException {
+        // 1. Kiểm tra validation (giữ nguyên logic cũ của bạn)
         if (shopRepository.existsByShopName(requestDto.getShopName())) {
-            throw new IllegalArgumentException("Shop with name '" + requestDto.getShopName() + "' already exists.");
+            throw new IllegalArgumentException("Shop name already exists.");
         }
-        // Kiểm tra xem ownerId có tồn tại không
+
         User owner = userRepository.findById(requestDto.getOwnerId())
-                .orElseThrow(() -> new ResourceNotFoundException("User (owner) not found with id: " + requestDto.getOwnerId()));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        // Kiểm tra xem user này đã có shop chưa (mối quan hệ OneToOne)
         if (shopRepository.findByOwnerId(requestDto.getOwnerId()).isPresent()) {
-            throw new IllegalArgumentException("User with id " + requestDto.getOwnerId() + " already owns a shop.");
+            throw new IllegalArgumentException("User already owns a shop.");
         }
 
+        // 2. Xử lý logic Upload ảnh
         Shop shop = shopMapper.toEntity(requestDto);
-        shop.setOwner(owner); // Gán owner
-        shop = shopRepository.save(shop);
-        return shopMapper.toDto(shop);
+
+        if (logo != null && !logo.isEmpty()) {
+            Map uploadResult = cloudinaryService.upload(logo);
+            shop.setLogo((String) uploadResult.get("url"));
+            shop.setLogoPublicId((String) uploadResult.get("public_id"));
+        }
+
+        // 3. Lưu shop
+        shop.setOwner(owner);
+        return shopMapper.toDto(shopRepository.save(shop));
     }
 
     @Override
@@ -100,5 +114,25 @@ public class ShopServiceImpl implements ShopService {
             throw new ResourceNotFoundException("Shop not found with id: " + id);
         }
         shopRepository.deleteById(id);
+    }
+    @Override
+    @Transactional
+    public ShopResponseDto updateShopStatus(Long id, ShopStatus status) {
+
+        Shop shop = shopRepository.findById(id)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Shop not found with id: " + id));
+
+        if (shop.getStatus() == status) {
+            throw new IllegalArgumentException(
+                    "Shop is already in status " + status);
+        }
+
+        shop.setStatus(status);
+
+        return shopMapper.toDto(
+                shopRepository.save(shop)
+        );
     }
 }

@@ -1,6 +1,7 @@
 package com.trunghieu.fashioncommerce.fashion_commerce_backend.controller;
 
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.request.UserRequestDto;
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.request.UserStatusRequestDto;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.request.UserUpdateRequestDto;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.response.UserResponseDto;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.service.UserService;
@@ -55,5 +56,18 @@ public class UserController {
     public ResponseEntity<Void> deleteUser(@PathVariable Long id, Authentication authentication) {
         userService.deleteUser(id);
         return ResponseEntity.noContent().build();
+    }
+    @PatchMapping("/{id}/status")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<UserResponseDto> updateUserStatus(
+            @PathVariable Long id,
+            @RequestBody UserStatusRequestDto requestDto) {
+
+        return ResponseEntity.ok(
+                userService.updateUserStatus(
+                        id,
+                        requestDto.getStatus()
+                )
+        );
     }
 }

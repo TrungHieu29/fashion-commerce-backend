@@ -69,6 +69,8 @@ public class SecurityConfig {
                                 "/api/reviews/products/**",
                                 "/api/categories/**"
                         ).permitAll()
+                        .requestMatchers(HttpMethod.OPTIONS, "/**")
+                        .permitAll()
                         .anyRequest().authenticated() // Các request khác yêu cầu xác thực
                 )
                 .sessionManagement(session -> session
@@ -109,7 +111,14 @@ public class SecurityConfig {
         );
 
         configuration.setAllowedMethods(
-                List.of("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                List.of(
+                        "GET",
+                        "POST",
+                        "PUT",
+                        "PATCH",
+                        "DELETE",
+                        "OPTIONS"
+                )
         );
 
         configuration.setAllowedHeaders(

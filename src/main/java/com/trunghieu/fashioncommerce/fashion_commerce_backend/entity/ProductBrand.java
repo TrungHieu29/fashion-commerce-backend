@@ -18,10 +18,10 @@ public class ProductBrand {
     @Column(name = "brand_id")
     private Long id;
 
-    @Column(name = "name", nullable = false, unique = true) // Added @Column and constraints
+    @Column(name = "name", nullable = false, unique = true, columnDefinition = "NVARCHAR(255)") // Added @Column and constraints
     private String name;
 
-    @Column(name = "description", columnDefinition = "TEXT") // Added @Column
+    @Column(name = "description", columnDefinition = "NVARCHAR(255)") // Added @Column
     private String description;
 
     @Column(name = "created_at") // Added createdAt

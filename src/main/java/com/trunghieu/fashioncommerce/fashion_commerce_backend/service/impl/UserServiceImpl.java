@@ -3,15 +3,14 @@ package com.trunghieu.fashioncommerce.fashion_commerce_backend.service.impl;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.request.UserRequestDto;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.request.UserUpdateRequestDto;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.response.UserResponseDto;
-import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.Role;
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.PendingRegistration;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.User;
-import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.VerificationToken;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.enums.RoleName;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.enums.UserStatus;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.exception.ResourceNotFoundException;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.mapper.UserMapper;
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.repository.PendingRegistrationRepository;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.repository.UserRepository;
-import com.trunghieu.fashioncommerce.fashion_commerce_backend.repository.VerificationTokenRepository;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.service.EmailService;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.service.RoleService;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.service.UserService;
@@ -32,12 +31,12 @@ public class UserServiceImpl implements UserService {
     private final UserMapper userMapper;
     private final RoleService roleService;
     private final PasswordEncoder passwordEncoder;
-    private final VerificationTokenRepository tokenRepository;
     private final EmailService emailService;
+    private final PendingRegistrationRepository pendingRepository;
 
     @Override
     @Transactional
-    public UserResponseDto createUser(UserRequestDto requestDto) {
+    public String createUser(UserRequestDto requestDto) {
         if (userRepository.existsByUsername(requestDto.getUsername())) {
             throw new IllegalArgumentException("Username already exists");
         }
@@ -45,30 +44,50 @@ public class UserServiceImpl implements UserService {
             throw new IllegalArgumentException("Email already exists");
         }
 
-        User user = userMapper.toEntity(requestDto);
-        user.setPasswordHash(passwordEncoder.encode(requestDto.getPassword()));
-        user.setRole(roleService.getRoleEntityByName(RoleName.CUSTOMER));
+        if (pendingRepository.existsByUsername(requestDto.getUsername())) {
+            throw new IllegalArgumentException(
+                    "Username đang chờ xác thực"
+            );
+        }
 
-        // Đặt trạng thái là PENDING thay vì ACTIVE
-        user.setStatus(UserStatus.PENDING);
+        pendingRepository.findByEmail(requestDto.getEmail())
+                .ifPresent(pending -> {
+                    if (pending.getExpiryDate().isBefore(LocalDateTime.now())) {
+                        pendingRepository.delete(pending);
+                    }
+                });
 
-        user = userRepository.save(user);
-
+        if (pendingRepository.existsByEmail(requestDto.getEmail())) {
+            throw new IllegalArgumentException(
+                    "Email đang chờ xác thực"
+            );
+        }
         // Tạo mã OTP 6 số
-        String otp = String.format("%06d", new java.util.Random().nextInt(999999));
+        String otp = String.format("%06d",
+                new java.util.Random().nextInt(1000000));
 
-        // Lưu vào bảng token
-        VerificationToken token = VerificationToken.builder()
-                .email(user.getEmail())
+        PendingRegistration pending = PendingRegistration.builder()
+                .username(requestDto.getUsername())
+                .passwordHash(passwordEncoder.encode(requestDto.getPassword()))
+                .fullName(requestDto.getFullName())
+                .email(requestDto.getEmail())
+                .phone(requestDto.getPhone())
+                .gender(requestDto.getGender())
+                .dateOfBirth(requestDto.getDateOfBirth())
+                .avatar(requestDto.getAvatar())
                 .otpCode(otp)
-                .expiryDate(LocalDateTime.now().plusMinutes(5)) // Hết hạn sau 5 phút
+                .expiryDate(LocalDateTime.now().plusMinutes(5))
+                .lastOtpSentAt(LocalDateTime.now())
                 .build();
-        tokenRepository.save(token);
 
-        // Gửi mail
-        emailService.sendOtpEmail(user.getEmail(), otp);
+        pendingRepository.save(pending);
 
-        return userMapper.toDto(user);
+        emailService.sendOtpEmail(
+                requestDto.getEmail(),
+                otp
+        );
+
+        return "OTP đã được gửi tới email";
     }
 
     @Override
@@ -125,25 +144,100 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public boolean verifyOtp(String email, String otp) {
-        VerificationToken token = tokenRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy mã xác thực cho email này"));
 
-        if (token.getExpiryDate().isBefore(LocalDateTime.now())) {
-            tokenRepository.delete(token); // Xóa token đã hết hạn
-            throw new IllegalArgumentException("Mã xác thực đã hết hạn");
+        PendingRegistration pending = pendingRepository.findByEmail(email)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Không tìm thấy yêu cầu đăng ký"));
+
+        if (pending.getExpiryDate().isBefore(LocalDateTime.now())) {
+
+            pendingRepository.delete(pending);
+
+            throw new IllegalArgumentException(
+                    "Mã xác thực đã hết hạn");
         }
 
-        if (!token.getOtpCode().equals(otp)) {
+        if (!pending.getOtpCode().equals(otp)) {
             return false;
         }
 
-        // Xác thực thành công -> Cập nhật User
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-        user.setStatus(UserStatus.ACTIVE);
+        User user = User.builder()
+                .username(pending.getUsername())
+                .passwordHash(pending.getPasswordHash())
+                .fullName(pending.getFullName())
+                .email(pending.getEmail())
+                .phone(pending.getPhone())
+                .gender(pending.getGender())
+                .dateOfBirth(pending.getDateOfBirth())
+                .avatar(pending.getAvatar())
+                .status(UserStatus.ACTIVE)
+                .role(roleService.getRoleEntityByName(RoleName.CUSTOMER))
+                .build();
+
         userRepository.save(user);
 
-        tokenRepository.delete(token); // Xóa token sau khi dùng
+        pendingRepository.delete(pending);
+
         return true;
+    }
+    @Override
+    @Transactional
+    public UserResponseDto updateUserStatus(Long id, UserStatus status) {
+
+        User user = userRepository.findById(id)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "User not found with id: " + id));
+
+        if (user.getStatus() == status) {
+            throw new IllegalArgumentException(
+                    "User is already in status " + status);
+        }
+
+        user.setStatus(status);
+
+        return userMapper.toDto(
+                userRepository.save(user)
+        );
+    }
+    @Override
+    @Transactional
+    public void resendOtp(String email) {
+
+        PendingRegistration pending =
+                pendingRepository.findByEmail(email)
+                        .orElseThrow(() ->
+                                new ResourceNotFoundException(
+                                        "Không tìm thấy yêu cầu đăng ký"));
+        if (pending.getLastOtpSentAt() != null
+                && pending.getLastOtpSentAt()
+                .plusSeconds(60)
+                .isAfter(LocalDateTime.now())) {
+
+            throw new IllegalArgumentException(
+                    "Vui lòng đợi 60 giây trước khi gửi lại OTP");
+        }
+
+        String otp = String.format(
+                "%06d",
+                new java.util.Random()
+                        .nextInt(1000000)
+        );
+
+        pending.setOtpCode(otp);
+
+        pending.setExpiryDate(
+                LocalDateTime.now().plusMinutes(5)
+        );
+        pending.setLastOtpSentAt(
+                LocalDateTime.now()
+        );
+        pendingRepository.save(pending);
+
+        emailService.sendOtpEmail(
+                email,
+                otp
+        );
     }
 }

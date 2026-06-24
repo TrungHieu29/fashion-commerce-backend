@@ -1,7 +1,11 @@
 package com.trunghieu.fashioncommerce.fashion_commerce_backend.repository;
 
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.Product;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.Shop;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
