@@ -35,7 +35,7 @@ public class Review {
     @Column(name = "rating") // Added @Column
     private Integer rating;
 
-    @Column(name = "comment", columnDefinition = "NVARCHAR(255)") // Added @Column
+    @Column(name = "comment") // Added @Column
     private String comment;
 
     @Column(name = "created_at") // Added @Column

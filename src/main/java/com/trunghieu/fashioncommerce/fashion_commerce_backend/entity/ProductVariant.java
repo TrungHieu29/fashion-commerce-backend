@@ -25,7 +25,7 @@ public class ProductVariant {
     @Column(name = "size") // Added @Column
     private String size;
 
-    @Column(name = "color", columnDefinition = "NVARCHAR(255)") // Added @Column
+    @Column(name = "color") // Added @Column
     private String color;
 
     @Column(name = "stock") // Added @Column

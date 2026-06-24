@@ -22,19 +22,19 @@ public class ShippingAddress {
     @ToString.Exclude
     private User user;
 
-    @Column(name = "receiver_name", columnDefinition = "NVARCHAR(255)")
+    @Column(name = "receiver_name")
     private String receiverName;
 
     @Column(name = "phone") // Added @Column
     private String phone;
 
-    @Column(name = "address_line", columnDefinition = "NVARCHAR(255)")
+    @Column(name = "address_line")
     private String addressLine;
 
-    @Column(name = "city", columnDefinition = "NVARCHAR(255)") // Added @Column
+    @Column(name = "city") // Added @Column
     private String city;
 
-    @Column(name = "district", columnDefinition = "NVARCHAR(255)") // Added @Column
+    @Column(name = "district") // Added @Column
     private String district;
 
     @Column(name = "is_default")

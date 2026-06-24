@@ -25,7 +25,7 @@ public class ProductImage {
     @Column(name = "image_url")
     private String imageUrl;
 
-    @Column(name = "color", columnDefinition = "NVARCHAR(255)")
+    @Column(name = "color")
     private String color;
 
     @Column(name = "created_at") // Added createdAt

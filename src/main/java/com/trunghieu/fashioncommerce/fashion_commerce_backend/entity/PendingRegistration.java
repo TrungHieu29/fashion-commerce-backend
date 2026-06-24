@@ -26,7 +26,7 @@ public class PendingRegistration {
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;
 
-    @Column(name = "full_name", columnDefinition = "NVARCHAR(255)")
+    @Column(name = "full_name")
     private String fullName;
 
     @Column(nullable = false, unique = true)

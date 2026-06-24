@@ -24,7 +24,7 @@ public class Product {
     @Column(name = "product_name", nullable = false, columnDefinition = "NVARCHAR(MAX)")
     private String productName;
 
-    @Column(name = "product_detail", columnDefinition = "NVARCHAR(255)")
+    @Column(name = "product_detail")
     private String productDetail;
 
     @Column(name = "rating") // Added @Column

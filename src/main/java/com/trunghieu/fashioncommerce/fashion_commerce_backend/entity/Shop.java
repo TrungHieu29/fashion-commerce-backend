@@ -19,7 +19,7 @@ public class Shop {
     @Column(name = "shop_id")
     private Long id;
 
-    @Column(name = "shop_name", nullable = false, columnDefinition = "NVARCHAR(255)")
+    @Column(name = "shop_name", nullable = false)
     private String shopName;
 
     @Column(name = "logo") // Added @Column
@@ -34,7 +34,7 @@ public class Shop {
     @Column(name = "status") // Added @Column
     private ShopStatus status; // Change type to ShopStatus
 
-    @Column(name = "address", columnDefinition = "NVARCHAR(255)") // Added @Column
+    @Column(name = "address") // Added @Column
     private String address;
 
     @Column(name = "email") // Added @Column
