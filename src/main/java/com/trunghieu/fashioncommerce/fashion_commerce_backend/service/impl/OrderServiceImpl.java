@@ -10,10 +10,12 @@ import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.enums.Disco
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.enums.PaymentMethod; // Import PaymentMethod
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.enums.PaymentStatus; // Import PaymentStatus
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.enums.ShippingStatus;
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.enums.NotificationType;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.exception.ResourceNotFoundException;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.mapper.OrderMapper;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.repository.*;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.service.DiscountService;
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.service.NotificationService;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.service.OrderService;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.service.PaymentService; // Import PaymentService
 import jakarta.persistence.criteria.Root;
@@ -52,6 +54,7 @@ public class OrderServiceImpl implements OrderService {
         private final OrderMapper orderMapper;
         private final ProductVariantRepository productVariantRepository; // Inject ProductVariantRepository
         private final PaymentService paymentService; // Inject PaymentService
+        private final NotificationService notificationService;
 
     @Override
     @Transactional
@@ -204,6 +207,15 @@ public class OrderServiceImpl implements OrderService {
         payment.setAmount(totalAfterVoucher);
 
         Order savedOrder = orderRepository.save(order);
+
+        savedOrder.getOrderShops().forEach(orderShop -> notificationService.createOrderNotification(
+                orderShop,
+                NotificationType.ORDER_CREATED,
+                "Dat hang thanh cong",
+                "Don hang #" + savedOrder.getId() + " tai shop "
+                        + orderShop.getShop().getShopName()
+                        + " da duoc tao va dang cho xac nhan."
+        ));
 
         // Chỉ xóa những CartItem đã checkout, giữ lại các sản phẩm không được tích.
         Set<Long> checkedOutIds = checkoutItems.stream()

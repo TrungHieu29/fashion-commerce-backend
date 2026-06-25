@@ -15,6 +15,7 @@ import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.enums.Disco
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.enums.PaymentMethod; // Import PaymentMethod
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.enums.PaymentStatus; // Import PaymentStatus
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.enums.ShippingStatus; // Import ShippingStatus
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.enums.NotificationType;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.exception.ResourceNotFoundException;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.mapper.OrderItemMapper;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.mapper.OrderShopMapper;
@@ -23,6 +24,7 @@ import com.trunghieu.fashioncommerce.fashion_commerce_backend.repository.OrderRe
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.repository.OrderShopRepository;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.repository.ProductVariantRepository;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.repository.ShopRepository;
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.service.NotificationService;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.service.OrderService; // Inject OrderService
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.service.OrderShopService;
 import lombok.RequiredArgsConstructor;
@@ -47,6 +49,7 @@ public class OrderShopServiceImpl implements OrderShopService {
     private final OrderShopMapper orderShopMapper;
     private final OrderItemMapper orderItemMapper;
     private final OrderService orderService; // Inject OrderService
+    private final NotificationService notificationService;
 
     @Override
     @Transactional(readOnly = true)
@@ -95,6 +98,7 @@ public class OrderShopServiceImpl implements OrderShopService {
         }
 
         OrderShop savedOrderShop = orderShopRepository.save(orderShop);
+        notifyOrderStatusChanged(savedOrderShop);
 
         return orderShopMapper.toDto(savedOrderShop);
     }
@@ -111,6 +115,7 @@ public class OrderShopServiceImpl implements OrderShopService {
 
         orderShop.setStatus(OrderStatus.RETURN_REQUESTED);
         OrderShop savedOrderShop = orderShopRepository.save(orderShop);
+        notifyOrderStatusChanged(savedOrderShop);
 
         return orderShopMapper.toDto(savedOrderShop);
     }
@@ -145,6 +150,7 @@ public class OrderShopServiceImpl implements OrderShopService {
         }
 
         OrderShop savedOrderShop = orderShopRepository.save(orderShop);
+        notifyOrderStatusChanged(savedOrderShop);
         return orderShopMapper.toDto(savedOrderShop);
     }
 
@@ -162,6 +168,18 @@ public class OrderShopServiceImpl implements OrderShopService {
         orderService.deductStock(orderShop); // Trừ kho khi xác nhận đơn hàng
 
         OrderShop savedOrderShop = orderShopRepository.save(orderShop);
+        notifyOrderStatusChanged(savedOrderShop);
         return orderShopMapper.toDto(savedOrderShop);
+    }
+
+    private void notifyOrderStatusChanged(OrderShop orderShop) {
+        notificationService.createOrderNotification(
+                orderShop,
+                NotificationType.ORDER_STATUS_CHANGED,
+                "Don hang cap nhat trang thai",
+                "Don hang #" + orderShop.getOrder().getId()
+                        + " tai shop " + orderShop.getShop().getShopName()
+                        + " hien dang o trang thai " + orderShop.getStatus() + "."
+        );
     }
 }

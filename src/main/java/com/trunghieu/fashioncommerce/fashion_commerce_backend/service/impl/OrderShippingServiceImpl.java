@@ -5,6 +5,7 @@ import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.response.Order
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.OrderShipping;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.OrderShop;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.Payment;
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.enums.NotificationType;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.enums.ShippingStatus;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.Order;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.enums.OrderStatus;
@@ -15,6 +16,7 @@ import com.trunghieu.fashioncommerce.fashion_commerce_backend.mapper.OrderShippi
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.repository.OrderRepository; // Import OrderRepository
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.repository.OrderShippingRepository;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.repository.OrderShopRepository;
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.service.NotificationService;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.service.OrderService; // Import OrderService
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.service.OrderShippingService;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +34,7 @@ public class OrderShippingServiceImpl implements OrderShippingService {
     private final OrderService orderService; // Inject OrderService
     private final OrderShippingMapper orderShippingMapper;
     private final OrderRepository orderRepository; // Inject OrderRepository
+    private final NotificationService notificationService;
 
     @Override
     @Transactional
@@ -100,6 +103,7 @@ public class OrderShippingServiceImpl implements OrderShippingService {
     private void updateStatusWorkflow(OrderShipping shipping, ShippingStatus newStatus) {
         shipping.setShippingStatus(newStatus);
         OrderShop orderShop = shipping.getOrderShop();
+        OrderStatus previousOrderStatus = orderShop.getStatus();
         Order order = orderShop.getOrder(); // Lấy Order chính
 
         switch (newStatus) {
@@ -107,14 +111,17 @@ public class OrderShippingServiceImpl implements OrderShippingService {
                 // Khi OrderShipping chuyển sang PROCESSING, OrderShop cũng chuyển sang PROCESSING
                 if (orderShop.getStatus() == OrderStatus.CONFIRMED) { // Chỉ chuyển nếu đã CONFIRMED
                     orderShop.setStatus(OrderStatus.PROCESSING);
+                    notifyOrderStatusChangedIfNeeded(orderShop, previousOrderStatus);
                     orderShopRepository.save(orderShop); // Lưu OrderShop ngay sau khi cập nhật trạng thái
                 }
                 break;
             case SHIPPED:
                 orderShop.setStatus(OrderStatus.SHIPPED);
+                notifyOrderStatusChangedIfNeeded(orderShop, previousOrderStatus);
                 break;
             case DELIVERED:
                 orderShop.setStatus(OrderStatus.DELIVERED);
+                notifyOrderStatusChangedIfNeeded(orderShop, previousOrderStatus);
                 // Nếu là COD, cập nhật luôn Payment sang COMPLETED (Mockup logic)
                 if (order.getPayment() != null && order.getPayment().getMethod() == PaymentMethod.COD && order.getPayment().getStatus() == PaymentStatus.PENDING) {
                     order.getPayment().setStatus(PaymentStatus.COMPLETED);
@@ -124,6 +131,7 @@ public class OrderShippingServiceImpl implements OrderShippingService {
             case CANCELLED:
                 orderShop.setStatus(OrderStatus.CANCELLED);
                 orderService.replenishStock(orderShop); // Hoàn kho khi hủy
+                notifyOrderStatusChangedIfNeeded(orderShop, previousOrderStatus);
                 // Xử lý hoàn tiền nếu đã thanh toán online
                 Payment payment = order.getPayment();
                 if (payment != null && payment.getStatus() == PaymentStatus.COMPLETED) {
@@ -134,6 +142,7 @@ public class OrderShippingServiceImpl implements OrderShippingService {
             case RETURNED:
                 orderShop.setStatus(OrderStatus.RETURNED);
                 orderService.replenishStock(orderShop); // Hoàn kho khi khách trả hàng
+                notifyOrderStatusChangedIfNeeded(orderShop, previousOrderStatus);
                 // Xử lý hoàn tiền nếu đã thanh toán online hoặc COD
                 Payment returnPayment = order.getPayment();
                 if (returnPayment != null && returnPayment.getStatus() == PaymentStatus.COMPLETED) {
@@ -143,6 +152,19 @@ public class OrderShippingServiceImpl implements OrderShippingService {
                 break;
         }
         // orderShopRepository.save(orderShop); // Xóa dòng này, vì đã lưu bên trong case PROCESSING hoặc các case khác
+    }
+
+    private void notifyOrderStatusChangedIfNeeded(OrderShop orderShop, OrderStatus previousOrderStatus) {
+        if (previousOrderStatus != orderShop.getStatus()) {
+            notificationService.createOrderNotification(
+                    orderShop,
+                    NotificationType.ORDER_STATUS_CHANGED,
+                    "Don hang cap nhat trang thai",
+                    "Don hang #" + orderShop.getOrder().getId()
+                            + " tai shop " + orderShop.getShop().getShopName()
+                            + " hien dang o trang thai " + orderShop.getStatus() + "."
+            );
+        }
     }
 
     private ShippingStatus parseShippingStatus(String status) {

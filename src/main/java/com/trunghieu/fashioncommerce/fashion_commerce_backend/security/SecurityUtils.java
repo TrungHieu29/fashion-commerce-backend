@@ -3,6 +3,7 @@ package com.trunghieu.fashioncommerce.fashion_commerce_backend.security;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.repository.CartRepository;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.repository.ConversationRepository;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.repository.DiscountRepository;
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.repository.NotificationRepository;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.repository.OrderItemRepository;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.repository.OrderRepository;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.repository.OrderShippingRepository;
@@ -35,6 +36,7 @@ public class SecurityUtils {
     private final ReviewRepository reviewRepository;
     private final DiscountRepository discountRepository;
     private final PaymentRepository paymentRepository;
+    private final NotificationRepository notificationRepository;
 
     public boolean isShopOwner(Long shopId) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -261,6 +263,19 @@ public class SecurityUtils {
                         && payment.getOrder().getUser().getId().equals(currentUserId))
                 .orElse(false);
     }
+
+    public boolean isNotificationOwner(Long notificationId) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()
+                || !(authentication.getPrincipal() instanceof CustomUserDetails)) {
+            return false;
+        }
+        CustomUserDetails currentUser = (CustomUserDetails) authentication.getPrincipal();
+        Long currentUserId = currentUser.getId();
+
+        return notificationRepository.existsByIdAndUserId(notificationId, currentUserId);
+    }
+
     public static Long getCurrentUserId() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()
