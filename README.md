@@ -1,207 +1,83 @@
 # Fashion Commerce Backend
 
 ![Java](https://img.shields.io/badge/Java-21-blue)
-![Spring Boot](https://img.shields.io/badge/SpringBoot-3.2-green)
-![SQL Server](https://img.shields.io/badge/SQLServer-2019-red)
-![License](https://img.shields.io/badge/license-MIT-blue)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.2.5-green)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-supported-blue)
+![Docker](https://img.shields.io/badge/Docker-ready-2496ED)
 
-Backend API cho nền tảng thương mại điện tử thời trang theo mô hình marketplace, nơi khách hàng có thể mua sắm từ nhiều shop, chủ shop quản lý sản phẩm và đơn hàng, còn admin theo dõi vận hành toàn hệ thống.
-
-Project được xây dựng bằng Spring Boot 3, Java 21, SQL Server, JWT Security, WebSocket realtime chat, Cloudinary upload ảnh, email OTP và OpenAPI documentation.
-
----
-
-## Điểm nổi bật
-
-- Multi-vendor marketplace: đơn hàng được tách theo từng shop để mỗi shop xử lý phần đơn của mình.
-- Authentication bằng JWT access token và refresh token, mã hóa mật khẩu bằng BCrypt.
-- Đăng ký tài khoản qua OTP email, quên mật khẩu và reset mật khẩu có giới hạn thời gian.
-- Phân quyền theo role và ownership bằng Spring Security Method Security.
-- Quản lý sản phẩm đầy đủ: brand, category, variant size/màu/tồn kho, ảnh sản phẩm theo màu.
-- Upload và đồng bộ ảnh với Cloudinary, có lưu `public_id` để xóa/cập nhật ảnh cũ.
-- Checkout có snapshot dữ liệu tại thời điểm mua: tên sản phẩm, ảnh, giá và địa chỉ nhận hàng.
-- Voucher/discount linh hoạt theo product, shop hoặc order, hỗ trợ phần trăm và số tiền cố định.
-- Quản lý vòng đời đơn hàng: pending, confirmed, processing, shipped, delivered, completed, cancelled, return.
-- Tự động trừ kho khi shop xác nhận đơn và hoàn kho khi hủy đơn phù hợp.
-- Realtime chat giữa khách hàng và shop bằng WebSocket/STOMP, hỗ trợ gửi tin, typing và đánh dấu đã đọc.
-- Dashboard analytics cho shop: doanh thu, số đơn, AOV và timeline theo hôm nay/7 ngày/30 ngày.
-- API docs bằng Swagger UI và ReDoc.
-
----
+Backend API for a fashion commerce marketplace. The system supports customers buying from multiple shops, shop owners managing products and orders, admins managing users/shops, realtime chat, Cloudinary image uploads, Brevo email OTP, and Swagger/ReDoc API documentation.
 
 ## Tech Stack
 
-| Nhóm | Công nghệ |
+| Group | Technology |
 | --- | --- |
 | Language | Java 21 |
 | Framework | Spring Boot 3.2.5 |
-| API | Spring Web, RESTful API, OpenAPI/Swagger |
+| API | Spring Web, REST API, OpenAPI/Swagger, ReDoc |
 | Security | Spring Security, JWT, BCrypt, Method Security |
-| Database | Microsoft SQL Server |
+| Database | PostgreSQL |
 | ORM | Spring Data JPA, Hibernate |
 | Realtime | Spring WebSocket, STOMP, SockJS |
 | Mapping | MapStruct |
 | Boilerplate | Lombok |
-| Media Storage | Cloudinary |
-| Email | Spring Mail, Gmail SMTP |
-| Build Tool | Maven |
-| Testing | Spring Boot Test, Spring Security Test |
+| Media | Cloudinary |
+| Email | Brevo SMTP API |
+| Build | Maven Wrapper, Docker |
 
----
+## Main Features
 
-## Kiến trúc tổng quan
+- JWT authentication with access token and refresh token.
+- Account registration with email OTP, resend OTP, forgot password, and reset password.
+- Role-based authorization with `ADMIN`, `CUSTOMER`, plus ownership checks using `@PreAuthorize`.
+- Shop management, shop status management, and multipart logo upload.
+- Product, brand, category, variant, and product image management.
+- Product search/filter by keyword, shop, category, and brand.
+- Cart and multi-shop checkout. One checkout can create multiple `OrderShop` records.
+- Order snapshots for product name, image, price, and shipping address at purchase time.
+- Discount/voucher support for `PRODUCT`, `SHOP`, and `ORDER`; supports `PERCENT` and `FIXED`.
+- Payment status support for `COD`, `VNPAY`, and `MOMO`.
+- Notifications, wishlist, reviews, and shipping addresses.
+- Realtime chat over WebSocket/STOMP: send message, typing indicator, and mark read.
+- Shop dashboard and analytics.
+- Dockerfile for Render or similar container-based deployment.
 
-```text
-Client / Frontend
-      |
-      v
-Controller Layer
-REST API + WebSocket endpoint
-      |
-      v
-Service Layer
-Business rules, transaction, authorization helpers
-      |
-      v
-Repository Layer
-Spring Data JPA queries
-      |
-      v
-SQL Server
-```
-
-Project được tổ chức theo layered architecture:
+## Project Structure
 
 ```text
 src/main/java/com/trunghieu/fashioncommerce/fashion_commerce_backend
-├── config          # OpenAPI, Cloudinary, WebSocket configuration
-├── controller      # REST controllers và WebSocket controller
-├── dto             # Request/Response DTOs
-├── entity          # JPA entities và enums
-├── exception       # Global exception handling
-├── mapper          # MapStruct mappers
-├── repository      # Spring Data JPA repositories
-├── scheduler       # Scheduled jobs
-├── security        # JWT, filter, UserDetails, ownership security utils
-└── service         # Business interfaces và implementations
+|-- config          # Cloudinary, OpenAPI, WebSocket
+|-- controller      # REST controllers and WebSocket controller
+|-- dto             # Request/Response DTOs
+|-- entity          # JPA entities and enums
+|-- exception       # Global exception handler
+|-- mapper          # MapStruct mappers
+|-- repository      # Spring Data JPA repositories
+|-- scheduler       # Scheduled jobs
+|-- security        # JWT, filter, UserDetails, SecurityUtils
+`-- service         # Business interfaces and implementations
 ```
 
----
+Main request flow:
 
-## Core Modules
-
-### Auth & User
-
-- Đăng ký tài khoản qua OTP email.
-- Xác thực OTP và kích hoạt tài khoản.
-- Đăng nhập trả về `accessToken`, `refreshToken` và thông tin user.
-- Đổi mật khẩu khi đã đăng nhập.
-- Quên mật khẩu, gửi OTP reset, giới hạn số lần nhập sai.
-- Admin có thể quản lý trạng thái user: `PENDING`, `ACTIVE`, `INACTIVE`, `BANNED`.
-
-### Product Catalog
-
-- Quản lý product, category, brand.
-- Product có nhiều variant theo size, màu và tồn kho.
-- Product có nhiều ảnh, ảnh có thể gắn theo màu variant.
-- Tìm kiếm sản phẩm, lọc theo shop, category, brand.
-- Trạng thái sản phẩm: `ACTIVE`, `INACTIVE`, `OUT_OF_STOCK`, `DRAFT`.
-
-### Shop Management
-
-- Customer có thể tạo shop của mình.
-- Shop có logo upload dạng multipart.
-- Admin duyệt/cập nhật trạng thái shop: `PENDING`, `ACTIVE`, `INACTIVE`, `BANNED`, `REJECTED`.
-- Chủ shop chỉ được thao tác với tài nguyên thuộc shop của mình.
-
-### Cart & Checkout
-
-- Giỏ hàng theo user.
-- Thêm sản phẩm, cập nhật số lượng, đổi variant, xóa item hoặc clear cart.
-- Checkout toàn bộ giỏ hàng hoặc chỉ những cart item được chọn.
-- Khi checkout, hệ thống nhóm item theo shop và tạo các `OrderShop` riêng.
-- Lưu snapshot địa chỉ để đơn hàng không bị ảnh hưởng khi user sửa địa chỉ sau này.
-
-### Order & Inventory
-
-- Một `Order` tổng có thể chứa nhiều `OrderShop`.
-- Mỗi `OrderShop` có danh sách `OrderItem`, trạng thái riêng và shipping riêng.
-- Giá, tên sản phẩm và ảnh được đóng băng tại thời điểm mua.
-- Kiểm tra tồn kho trước khi tạo đơn.
-- Trừ tồn kho khi shop xác nhận đơn.
-- Hoàn tồn kho khi đơn bị hủy trong trạng thái phù hợp.
-- Hỗ trợ lọc đơn theo trạng thái của `OrderShop`.
-
-### Discount & Voucher
-
-- Discount theo 3 target:
-  - `PRODUCT`: áp dụng cho sản phẩm cụ thể.
-  - `SHOP`: áp dụng cho toàn shop.
-  - `ORDER`: voucher theo mã, áp dụng theo giá trị đơn tối thiểu.
-- Hỗ trợ `PERCENT` và `FIXED`.
-- Tự chọn mức giảm tốt nhất cho sản phẩm khi checkout.
-- Voucher theo từng shop trong cùng một đơn marketplace.
-
-### Payment
-
-- Hỗ trợ phương thức: `COD`, `VNPAY`, `MOMO`.
-- Trạng thái payment: `PENDING`, `COMPLETED`, `FAILED`, `REFUND_INITIATED`, `REFUNDED`.
-- Online payment result có thể tự chuyển trạng thái order shop sang confirmed hoặc cancelled.
-- Với COD, payment được hoàn tất khi giao hàng thành công.
-
-### Realtime Chat
-
-- WebSocket endpoint: `/ws`
-- STOMP application prefix: `/app`
-- Broker topics: `/topic`, `/queue`
-- Gửi tin nhắn realtime theo conversation.
-- Typing indicator.
-- Mark read message.
-- WebSocket inbound channel có interceptor để xác thực user.
-
-### Dashboard & Analytics
-
-- Dashboard theo shop.
-- Thống kê doanh thu, số đơn, average order value.
-- Timeline doanh thu theo `today`, `7days`, `30days`.
-- Lấy recent orders và thống kê trạng thái đơn hàng phục vụ giao diện quản trị shop.
-
----
-
-## Security
-
-Project sử dụng stateless security:
-
-- JWT authentication filter chạy trước `UsernamePasswordAuthenticationFilter`.
-- Session policy: `STATELESS`.
-- Password encoder: `BCryptPasswordEncoder`.
-- Role-based access control qua `@PreAuthorize`.
-- Ownership-based authorization qua `SecurityUtils`, ví dụ:
-  - User chỉ xem/sửa dữ liệu của chính mình.
-  - Shop owner chỉ quản lý sản phẩm, đơn hàng, voucher của shop mình.
-  - Conversation chỉ được xem bởi participant.
-  - Admin có quyền quản trị toàn hệ thống.
-
-Public endpoints:
-
-- `/api/auth/**`
-- Swagger/OpenAPI/ReDoc
-- Một số API đọc public như products, shops, categories, reviews.
-- WebSocket handshake `/ws/**`
-
----
+```text
+Frontend
+  -> Controller
+  -> Service
+  -> Repository
+  -> PostgreSQL
+```
 
 ## API Documentation
 
-Sau khi chạy ứng dụng:
+After starting the app locally:
 
-- Swagger UI: `http://localhost:8080/swagger-ui.html`
-- OpenAPI JSON: `http://localhost:8080/v3/api-docs`
-- ReDoc: `http://localhost:8080/redoc.html`
+```text
+Swagger UI:   http://localhost:8080/swagger-ui.html
+OpenAPI JSON: http://localhost:8080/v3/api-docs
+ReDoc:        http://localhost:8080/redoc.html
+```
 
-OpenAPI đã cấu hình Bearer JWT security scheme, có thể authorize trực tiếp bằng token trong Swagger UI.
-
----
+Swagger is configured with Bearer JWT. Use the `Authorize` button and paste an access token to test secured endpoints.
 
 ## API Groups
 
@@ -217,6 +93,7 @@ OpenAPI đã cấu hình Bearer JWT security scheme, có thể authorize trực 
 | Product Brands | `/api/product-brands` |
 | Categories | `/api/categories` |
 | Cart | `/api/carts` |
+| Wishlist | `/api/wishlist` |
 | Orders | `/api/orders` |
 | Order Shops | `/api/order-shops` |
 | Order Items | `/api/order-items` |
@@ -226,209 +103,252 @@ OpenAPI đã cấu hình Bearer JWT security scheme, có thể authorize trực 
 | Reviews | `/api/reviews` |
 | Conversations | `/api/conversations` |
 | Messages | `/api/messages` |
+| Notifications | `/api/notifications` |
 | Dashboard | `/api/dashboard`, `/api/dashboard/shop` |
 
----
+## WebSocket
 
-## Database Model Highlights
+```text
+Handshake endpoint: /ws
+Application prefix: /app
+Broker prefixes:    /topic, /queue
+User prefix:        /user
+```
 
-Các entity chính:
+Main message mappings:
 
-- `User`, `Role`, `PendingRegistration`, `PasswordResetToken`
-- `Shop`
-- `Product`, `ProductVariant`, `ProductImage`, `ProductBrand`, `Category`
-- `Cart`, `CartItem`
-- `Order`, `OrderShop`, `OrderItem`, `OrderShipping`
-- `Payment`
-- `Discount`
-- `Conversation`, `Message`
-- `Review`
-- `ShippingAddress`
+```text
+/app/chat.sendMessage
+/app/chat.typing
+/app/chat.markRead
+```
 
-Quan hệ nổi bật:
+Server broadcasts by conversation:
 
-- User có một cart và có thể sở hữu một shop.
-- Shop có nhiều product, discount, order shop và conversation.
-- Product có nhiều variant, image, review và category.
-- Order tổng được tách thành nhiều OrderShop theo từng shop.
-- OrderShop có nhiều OrderItem và một OrderShipping.
-- Payment gắn one-to-one với Order.
-- Conversation gắn giữa User và Shop, Message gắn với Conversation.
+```text
+/topic/conversations/{conversationId}
+/topic/conversations/{conversationId}/typing
+/topic/conversations/{conversationId}/read
+```
 
----
+## Security
 
-## Yêu cầu môi trường
+The backend uses stateless JWT security:
 
-- JDK 21+
-- Maven 3.9+ hoặc Maven Wrapper có sẵn trong project
-- Microsoft SQL Server
-- Tài khoản Cloudinary
-- Gmail SMTP app password hoặc SMTP credential tương đương
+- `JwtAuthenticationFilter` runs before `UsernamePasswordAuthenticationFilter`.
+- Session policy is `STATELESS`.
+- Passwords are hashed with `BCryptPasswordEncoder`.
+- Main public APIs:
+  - `/api/auth/**`
+  - Swagger/ReDoc/OpenAPI
+  - WebSocket handshake `/ws/**`
+  - Some public read APIs such as products, shops, categories, and reviews.
+- Other APIs require JWT authentication.
+- Current CORS allowlist:
+  - `http://localhost:5173`
+  - `https://*.vercel.app`
 
----
+## Environment Variables
 
-## Cấu hình biến môi trường
-
-Ứng dụng đọc cấu hình nhạy cảm từ environment variables:
+The app reads sensitive configuration from environment variables:
 
 ```env
-DB_URL=jdbc:sqlserver://localhost:1433;databaseName=fashion_commerce;encrypt=true;trustServerCertificate=true
-DB_USERNAME=your_database_username
+PORT=8080
+
+DB_URL=jdbc:postgresql://<host>:5432/<database>
+DB_USERNAME=postgres
 DB_PASSWORD=your_database_password
 
-JWT_SECRET_KEY=your_very_long_secret_key
+JWT_SECRET_KEY=your_long_jwt_secret_key
 
-MAIL_USERNAME=your_email@gmail.com
-MAIL_PASSWORD=your_gmail_app_password
+BREVO_API_KEY=your_brevo_api_key
 
 CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
 CLOUDINARY_API_KEY=your_cloudinary_api_key
 CLOUDINARY_API_SECRET=your_cloudinary_api_secret
 ```
----
 
-## Chạy project local
+Optional tuning variables:
 
-Clone repository:
+```env
+JPA_SHOW_SQL=false
+HIBERNATE_FORMAT_SQL=false
+HIBERNATE_DEFAULT_BATCH_FETCH_SIZE=50
+```
+
+SQL logging is disabled by default for production because cloud logging can slow down requests. Enable it only when debugging locally:
+
+```env
+JPA_SHOW_SQL=true
+HIBERNATE_FORMAT_SQL=true
+```
+
+## Run Locally
+
+Requirements:
+
+- JDK 21+
+- PostgreSQL or hosted PostgreSQL such as Supabase
+- Cloudinary account
+- Brevo API key
+
+Clone the project:
 
 ```bash
 git clone <repository-url>
 cd fashion-commerce-backend
 ```
 
-Khởi tạo database SQL Server, sau đó cấu hình các biến môi trường ở trên.
-
-Chạy bằng Maven Wrapper:
+Run with Maven Wrapper:
 
 ```bash
 ./mvnw spring-boot:run
 ```
 
-Trên Windows:
+On Windows:
 
 ```bash
 mvnw.cmd spring-boot:run
 ```
 
-Ứng dụng mặc định chạy tại:
+The app runs at:
 
 ```text
 http://localhost:8080
 ```
 
----
+## Build And Test
 
-## Build & Test
-
-Chạy test:
+Run tests:
 
 ```bash
 ./mvnw test
 ```
 
-Build package:
+Build jar:
 
 ```bash
 ./mvnw clean package
 ```
 
-File build nằm trong:
+Build Docker image:
 
-```text
-target/
+```bash
+docker build -t fashion-commerce-backend .
 ```
 
----
+Run Docker container:
 
-## Luồng nghiệp vụ tiêu biểu
+```bash
+docker run --env-file .env -p 8080:8080 fashion-commerce-backend
+```
 
-### Đăng ký và đăng nhập
+## Deployment Notes
+
+The backend can be deployed with the current Dockerfile. On Render or another container platform, configure all required environment variables in the deployment dashboard.
+
+For Render/Supabase:
+
+- Choose a backend region close to the database when possible.
+- Do not enable `JPA_SHOW_SQL=true` in production.
+- On free tiers, the first request can be slow because of cold start.
+- If product APIs are slow, check N+1 queries, SQL logging, and network latency between Render and Supabase.
+
+## Main Business Flows
+
+Registration:
 
 ```text
 POST /api/auth/register
-        -> lưu PendingRegistration
-        -> gửi OTP qua email
+  -> save PendingRegistration
+  -> send OTP through Brevo
 
 POST /api/auth/verify
-        -> xác thực OTP
-        -> tạo User ACTIVE với role CUSTOMER
+  -> verify OTP
+  -> create ACTIVE User
 
 POST /api/auth/authenticate
-        -> trả về accessToken, refreshToken, user profile
+  -> return accessToken, refreshToken, and user profile
 ```
 
-### Checkout marketplace
+Marketplace checkout:
 
 ```text
-Cart của user
-    -> chọn toàn bộ hoặc một số cart item
-    -> kiểm tra tồn kho
-    -> nhóm item theo shop
-    -> áp dụng discount/voucher theo shop
-    -> tạo Order tổng
-    -> tạo OrderShop cho từng shop
-    -> tạo OrderItem snapshot
-    -> tạo Payment PENDING
-    -> xóa các cart item đã checkout
+Cart
+  -> select checkout items
+  -> validate stock
+  -> group items by shop
+  -> apply discount/voucher
+  -> create parent Order
+  -> create OrderShop for each shop
+  -> create OrderItem snapshots
+  -> create PENDING Payment
+  -> remove checked-out items from cart
 ```
 
-### Xử lý đơn hàng
+Order lifecycle:
 
 ```text
 PENDING
-    -> shop confirm
-    -> CONFIRMED và trừ tồn kho
-    -> PROCESSING / SHIPPED / DELIVERED
-    -> customer xác nhận nhận hàng
-    -> COMPLETED
+  -> CONFIRMED
+  -> PROCESSING
+  -> SHIPPED
+  -> DELIVERED
+  -> COMPLETED
 ```
 
-Khi hủy đơn trong trạng thái phù hợp, hệ thống hoàn kho và cập nhật shipping/payment tương ứng.
-
-### Realtime chat
+Side paths:
 
 ```text
-Client connect /ws
-Client send /app/chat.sendMessage
-Server broadcast /topic/conversations/{conversationId}
-
-Client send /app/chat.typing
-Server broadcast /topic/conversations/{conversationId}/typing
-
-Client send /app/chat.markRead
-Server broadcast /topic/conversations/{conversationId}/read
+CANCELLED
+RETURN_REQUESTED
+RETURNED
 ```
 
----
+## Main Entities
 
-## Chất lượng code
+- `User`, `Role`, `PendingRegistration`, `PasswordResetToken`
+- `Shop`
+- `Product`, `ProductVariant`, `ProductImage`, `ProductBrand`, `Category`
+- `Cart`, `CartItem`, `WishlistItem`
+- `Order`, `OrderShop`, `OrderItem`, `OrderShipping`
+- `Payment`
+- `Discount`
+- `Conversation`, `Message`
+- `Review`
+- `ShippingAddress`
+- `Notification`
 
-- Tách lớp rõ ràng: Controller, Service, Repository, Mapper, DTO, Entity.
-- Business logic đặt trong Service và được bọc transaction bằng `@Transactional`.
-- DTO giúp tránh expose trực tiếp entity ra API.
-- MapStruct giảm boilerplate mapping.
-- Global exception handler chuẩn hóa lỗi API.
-- Validation request bằng Jakarta Validation.
-- Method-level authorization giúp bảo vệ tài nguyên theo role và owner.
-- Dữ liệu đơn hàng dùng snapshot để đảm bảo tính lịch sử.
+## Important Enums
 
----
+- `UserStatus`: `PENDING`, `ACTIVE`, `INACTIVE`, `BANNED`
+- `ShopStatus`: `PENDING`, `ACTIVE`, `INACTIVE`, `BANNED`, `REJECTED`
+- `ProductStatus`: `ACTIVE`, `INACTIVE`, `OUT_OF_STOCK`, `DRAFT`
+- `OrderStatus`: `PENDING`, `CONFIRMED`, `PROCESSING`, `SHIPPED`, `DELIVERED`, `COMPLETED`, `CANCELLED`, `RETURN_REQUESTED`, `RETURNED`
+- `PaymentStatus`: `PENDING`, `COMPLETED`, `FAILED`, `REFUND_INITIATED`, `REFUNDED`
+- `ShippingStatus`: `PENDING`, `PROCESSING`, `SHIPPED`, `DELIVERED`, `CANCELLED`, `RETURNED`
+- `DiscountTarget`: `PRODUCT`, `SHOP`, `ORDER`
+- `DiscountType`: `PERCENT`, `FIXED`
+- `DiscountStatus`: `ACTIVE`, `INACTIVE`, `EXPIRED`
 
-## Roadmap gợi ý
+## Current Notes
 
-- Tích hợp gateway thật cho VNPAY/MOMO callback.
-- Bổ sung refresh token endpoint và token revocation.
-- Thêm migration bằng Flyway hoặc Liquibase.
-- Viết integration test cho checkout, discount và order lifecycle.
-- Thêm Docker Compose cho SQL Server và backend.
-- Bổ sung CI pipeline chạy test/build tự động.
+- `spring.jpa.hibernate.ddl-auto=update` is used for development convenience. For real production, prefer Flyway or Liquibase migrations.
+- SQL logging is disabled by default and Hibernate batch fetch size is enabled to reduce extra lazy-loading queries.
+- Redis/cache is not currently added. If performance needs more work, measure slow requests first, then cache high-read APIs such as products, categories, and brands.
+- Maven Wrapper should be working before running build/test locally. If the wrapper fails on Windows, install global Maven or inspect the wrapper script.
 
----
+## Roadmap
 
-## Tác giả
+- Optimize product/discount queries to reduce N+1 behavior.
+- Add integration tests for auth, checkout, discount, and order lifecycle.
+- Add Flyway or Liquibase migrations.
+- Add Redis cache for high-read data when traffic grows.
+- Complete real callbacks for VNPAY/MOMO.
+- Add CI pipeline for automatic test/build.
+
+## Author
 
 **Trung Hieu**
 
 Backend Developer - Java Spring Boot
-
-Project này thể hiện khả năng thiết kế REST API, xử lý nghiệp vụ marketplace nhiều shop, bảo mật JWT, realtime WebSocket, quản lý media cloud và xây dựng backend có cấu trúc rõ ràng để mở rộng trong môi trường thực tế.
