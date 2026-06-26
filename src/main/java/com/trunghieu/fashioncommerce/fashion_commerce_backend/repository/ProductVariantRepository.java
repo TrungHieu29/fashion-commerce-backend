@@ -11,6 +11,7 @@ import java.util.Optional;
 @Repository
 public interface ProductVariantRepository extends JpaRepository<ProductVariant, Long> {
     List<ProductVariant> findByProductId(Long productId);
+    List<ProductVariant> findByProductIdAndStockGreaterThanOrderByIdAsc(Long productId, Integer stock);
     Optional<ProductVariant> findByProductIdAndSizeAndColor(Long productId, String size, String color);
     @Query("""
         SELECT pv.product.id

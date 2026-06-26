@@ -11,6 +11,8 @@ import java.util.Optional;
 public interface ProductImageRepository extends JpaRepository<ProductImage, Long> {
     List<ProductImage> findByProductId(Long productId);
 
+    List<ProductImage> findByProductIdOrderByCreatedAtAscIdAsc(Long productId);
+
     void deleteByProductId(Long productId);
 
     Optional<ProductImage> findByProductIdAndColor(Long productId, String color);

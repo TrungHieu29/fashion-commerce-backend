@@ -5,11 +5,15 @@ import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.response.Produ
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.Category;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.Product;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.ProductBrand;
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.ProductImage;
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.ProductVariant;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.Shop;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.exception.ResourceNotFoundException;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.mapper.ProductMapper;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.repository.CategoryRepository;
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.repository.ProductImageRepository;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.repository.ProductRepository;
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.repository.ProductVariantRepository;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.service.CategoryService;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.service.DiscountService;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.service.ProductBrandService;
@@ -20,6 +24,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.math.BigDecimal;
@@ -35,6 +40,8 @@ public class ProductServiceImpl implements ProductService {
     private final ProductBrandService productBrandService; // Để kiểm tra brand tồn tại
     private final DiscountService discountService;
     private final CategoryRepository categoryRepository;
+    private final ProductImageRepository productImageRepository;
+    private final ProductVariantRepository productVariantRepository;
 
     @Override
     @Transactional
@@ -98,7 +105,38 @@ public class ProductServiceImpl implements ProductService {
         dto.setOriginalPrice(originalPrice);
         dto.setDiscountAmount(discountAmount);
         dto.setFinalPrice(originalPrice.subtract(discountAmount));
+        dto.setImageUrl(resolveProductThumbnail(product.getId()));
         return dto;
+    }
+
+    private String resolveProductThumbnail(Long productId) {
+        List<ProductImage> images = productImageRepository.findByProductIdOrderByCreatedAtAscIdAsc(productId);
+        if (images.isEmpty()) {
+            return null;
+        }
+
+        String matchingColorImageUrl = productVariantRepository
+                .findByProductIdAndStockGreaterThanOrderByIdAsc(productId, 0)
+                .stream()
+                .map(ProductVariant::getColor)
+                .filter(color -> color != null && !color.isBlank())
+                .distinct()
+                .flatMap(color -> images.stream()
+                        .filter(image -> image.getColor() != null && color.equalsIgnoreCase(image.getColor()))
+                        .map(ProductImage::getImageUrl))
+                .filter(imageUrl -> imageUrl != null && !imageUrl.isBlank())
+                .findFirst()
+                .orElse(null);
+
+        if (matchingColorImageUrl != null) {
+            return matchingColorImageUrl;
+        }
+
+        return images.stream()
+                .map(ProductImage::getImageUrl)
+                .filter(imageUrl -> imageUrl != null && !imageUrl.isBlank())
+                .findFirst()
+                .orElse(null);
     }
 
     @Override

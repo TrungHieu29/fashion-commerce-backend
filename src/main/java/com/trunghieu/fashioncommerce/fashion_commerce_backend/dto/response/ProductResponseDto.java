@@ -22,6 +22,7 @@ public class ProductResponseDto {
     private BigDecimal originalPrice; // Giá gốc
     private BigDecimal finalPrice; // Giá sau khi áp discount tốt nhất
     private BigDecimal discountAmount; // Số tiền được giảm
+    private String imageUrl;
     private Long shopId;
     private String shopName; // Thêm tên shop để hiển thị
     private Long brandId;
