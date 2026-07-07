@@ -3,31 +3,43 @@ package com.trunghieu.fashioncommerce.fashion_commerce_backend.service.impl;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.request.ProductRequestDto;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.dto.response.ProductResponseDto;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.Category;
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.Discount;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.Product;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.ProductBrand;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.ProductImage;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.ProductVariant;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.Shop;
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.enums.DiscountStatus;
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.enums.DiscountTarget;
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.entity.enums.DiscountType;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.exception.ResourceNotFoundException;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.mapper.ProductMapper;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.repository.CategoryRepository;
+import com.trunghieu.fashioncommerce.fashion_commerce_backend.repository.DiscountRepository;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.repository.ProductImageRepository;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.repository.ProductRepository;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.repository.ProductVariantRepository;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.service.CategoryService;
-import com.trunghieu.fashioncommerce.fashion_commerce_backend.service.DiscountService;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.service.ProductBrandService;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.service.ProductService;
 import com.trunghieu.fashioncommerce.fashion_commerce_backend.service.ShopService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDateTime;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
-import java.math.BigDecimal;
 
 @Service
 @RequiredArgsConstructor
@@ -35,18 +47,17 @@ public class ProductServiceImpl implements ProductService {
 
     private final ProductRepository productRepository;
     private final ProductMapper productMapper;
-    private final ShopService shopService; // Để kiểm tra shop tồn tại
-    private final CategoryService categoryService; // Để kiểm tra category tồn tại
-    private final ProductBrandService productBrandService; // Để kiểm tra brand tồn tại
-    private final DiscountService discountService;
+    private final ShopService shopService;
+    private final CategoryService categoryService;
+    private final ProductBrandService productBrandService;
     private final CategoryRepository categoryRepository;
     private final ProductImageRepository productImageRepository;
     private final ProductVariantRepository productVariantRepository;
+    private final DiscountRepository discountRepository;
 
     @Override
     @Transactional
     public ProductResponseDto createProduct(ProductRequestDto requestDto) {
-
         shopService.getShopById(requestDto.getShopId());
         productBrandService.getProductBrandById(requestDto.getBrandId());
 
@@ -85,40 +96,111 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Transactional(readOnly = true)
     public Page<ProductResponseDto> getAllProducts(Pageable pageable) {
-        return productRepository.findAllActive(pageable)
-                .map(this::enrichProductDto);
+        return enrichProductPage(productRepository.findAllActive(pageable), pageable);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Page<ProductResponseDto> getProductsByShopId(Long shopId, Pageable pageable) {
-        shopService.getShopById(shopId); // Kiểm tra shop tồn tại
-        return productRepository.findByShopId(shopId, pageable).map(this::enrichProductDto);
+        shopService.getShopById(shopId);
+        return enrichProductPage(productRepository.findByShopId(shopId, pageable), pageable);
     }
 
     private ProductResponseDto enrichProductDto(Product product) {
-        ProductResponseDto dto = productMapper.toDto(product);
-        BigDecimal originalPrice = product.getPrice();
-        BigDecimal discountAmount = discountService.calculateBestDiscount(product.getShop().getId(), product.getId(),
-                originalPrice);
-
-        dto.setOriginalPrice(originalPrice);
-        dto.setDiscountAmount(discountAmount);
-        dto.setFinalPrice(originalPrice.subtract(discountAmount));
-        dto.setImageUrl(resolveProductThumbnail(product.getId()));
-        return dto;
+        return enrichProducts(List.of(product)).get(0);
     }
 
-    private String resolveProductThumbnail(Long productId) {
-        List<ProductImage> images = productImageRepository.findByProductIdOrderByCreatedAtAscIdAsc(productId);
-        if (images.isEmpty()) {
+    private Page<ProductResponseDto> enrichProductPage(Page<Product> productPage, Pageable pageable) {
+        List<ProductResponseDto> content = enrichProducts(productPage.getContent());
+        return new PageImpl<>(content, pageable, productPage.getTotalElements());
+    }
+
+    private List<ProductResponseDto> enrichProducts(List<Product> products) {
+        if (products == null || products.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        Set<Long> productIds = products.stream()
+                .map(Product::getId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        Set<Long> shopIds = products.stream()
+                .map(Product::getShop)
+                .filter(Objects::nonNull)
+                .map(Shop::getId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        Map<Long, String> thumbnailsByProductId = resolveProductThumbnails(productIds);
+        Map<Long, List<Discount>> activeDiscountsByShopId = loadActiveDiscountsByShopId(shopIds);
+
+        return products.stream()
+                .map(product -> {
+                    ProductResponseDto dto = productMapper.toDto(product);
+                    BigDecimal originalPrice = product.getPrice();
+                    BigDecimal discountAmount = calculateBestDiscount(
+                            activeDiscountsByShopId.getOrDefault(product.getShop().getId(), Collections.emptyList()),
+                            product.getId(),
+                            originalPrice
+                    );
+
+                    dto.setOriginalPrice(originalPrice);
+                    dto.setDiscountAmount(discountAmount);
+                    dto.setFinalPrice(originalPrice == null ? null : originalPrice.subtract(discountAmount));
+                    dto.setImageUrl(thumbnailsByProductId.get(product.getId()));
+                    return dto;
+                })
+                .toList();
+    }
+
+    private Map<Long, List<Discount>> loadActiveDiscountsByShopId(Set<Long> shopIds) {
+        if (shopIds == null || shopIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        return discountRepository
+                .findActiveByShopIdsWithProducts(shopIds, DiscountStatus.ACTIVE, now)
+                .stream()
+                .collect(Collectors.groupingBy(discount -> discount.getShop().getId()));
+    }
+
+    private Map<Long, String> resolveProductThumbnails(Set<Long> productIds) {
+        if (productIds == null || productIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        Map<Long, List<ProductImage>> imagesByProductId = productImageRepository
+                .findByProductIdInOrderByProductIdAscCreatedAtAscIdAsc(productIds)
+                .stream()
+                .collect(Collectors.groupingBy(image -> image.getProduct().getId()));
+
+        Map<Long, List<String>> availableColorsByProductId = productVariantRepository
+                .findByProductIdInAndStockGreaterThanOrderByProductIdAscIdAsc(productIds, 0)
+                .stream()
+                .collect(Collectors.groupingBy(
+                        variant -> variant.getProduct().getId(),
+                        Collectors.mapping(ProductVariant::getColor, Collectors.toList())
+                ));
+
+        Map<Long, String> thumbnailsByProductId = new HashMap<>();
+        productIds.forEach(productId -> thumbnailsByProductId.put(
+                productId,
+                resolveProductThumbnail(
+                        imagesByProductId.getOrDefault(productId, Collections.emptyList()),
+                        availableColorsByProductId.getOrDefault(productId, Collections.emptyList())
+                )
+        ));
+        return thumbnailsByProductId;
+    }
+
+    private String resolveProductThumbnail(List<ProductImage> images, List<String> availableColors) {
+        if (images == null || images.isEmpty()) {
             return null;
         }
 
-        String matchingColorImageUrl = productVariantRepository
-                .findByProductIdAndStockGreaterThanOrderByIdAsc(productId, 0)
-                .stream()
-                .map(ProductVariant::getColor)
+        String matchingColorImageUrl = availableColors.stream()
                 .filter(color -> color != null && !color.isBlank())
                 .distinct()
                 .flatMap(color -> images.stream()
@@ -139,30 +221,64 @@ public class ProductServiceImpl implements ProductService {
                 .orElse(null);
     }
 
+    private BigDecimal calculateBestDiscount(List<Discount> activeDiscounts, Long productId, BigDecimal originalPrice) {
+        if (originalPrice == null || originalPrice.compareTo(BigDecimal.ZERO) <= 0 || activeDiscounts.isEmpty()) {
+            return BigDecimal.ZERO;
+        }
+
+        BigDecimal maxDiscountAmount = BigDecimal.ZERO;
+        for (Discount discount : activeDiscounts) {
+            boolean canApply = discount.getDiscountTarget() == DiscountTarget.SHOP;
+            if (discount.getDiscountTarget() == DiscountTarget.PRODUCT && discount.getProducts() != null) {
+                canApply = discount.getProducts().stream().anyMatch(product -> product.getId().equals(productId));
+            }
+
+            if (canApply) {
+                BigDecimal currentAmount = calculateDiscountAmount(discount, originalPrice);
+                if (currentAmount.compareTo(maxDiscountAmount) > 0) {
+                    maxDiscountAmount = currentAmount;
+                }
+            }
+        }
+
+        return maxDiscountAmount;
+    }
+
+    private BigDecimal calculateDiscountAmount(Discount discount, BigDecimal price) {
+        BigDecimal discountAmount;
+        if (discount.getDiscountType() == DiscountType.PERCENT) {
+            discountAmount = price.multiply(discount.getDiscountValue())
+                    .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+        } else {
+            discountAmount = discount.getDiscountValue();
+        }
+
+        return discountAmount.min(price);
+    }
+
     @Override
     @Transactional(readOnly = true)
     public Page<ProductResponseDto> getProductsByCategoryId(Long categoryId, Pageable pageable) {
-        categoryService.getCategoryById(categoryId); // Kiểm tra category tồn tại
-        return productRepository.findByCategoryId(categoryId, pageable).map(this::enrichProductDto);
+        categoryService.getCategoryById(categoryId);
+        return enrichProductPage(productRepository.findByCategoryId(categoryId, pageable), pageable);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Page<ProductResponseDto> getProductsByBrandId(Long brandId, Pageable pageable) {
-        productBrandService.getProductBrandById(brandId); // Kiểm tra brand tồn tại
-        return productRepository.findByBrandId(brandId, pageable).map(this::enrichProductDto);
+        productBrandService.getProductBrandById(brandId);
+        return enrichProductPage(productRepository.findByBrandId(brandId, pageable), pageable);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Page<ProductResponseDto> searchProducts(String keyword, Pageable pageable) {
-        return productRepository.findByProductNameContainingIgnoreCase(keyword, pageable).map(this::enrichProductDto);
+        return enrichProductPage(productRepository.findByProductNameContainingIgnoreCase(keyword, pageable), pageable);
     }
 
     @Override
     @Transactional
     public ProductResponseDto updateProduct(Long id, ProductRequestDto requestDto) {
-
         Product existingProduct = productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Product not found with id: " + id));
